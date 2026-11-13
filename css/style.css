@@ -91,7 +91,9 @@ html, body {
 /* 按鈕和進度線 */
 .btn { cursor: pointer; outline: none; }
 .btn:hover .ring, .btn:focus-visible .ring { stroke-width: 2.6; }
-.seek { cursor: pointer; }
+/* 進度線不要瀏覽器預設的方框；用鍵盤選到它時，改成把圓點加粗來示意 */
+.seek { cursor: pointer; outline: none; }
+.seek:focus-visible #seek-knob { stroke-width: 3; }
 
 /* 筆記本上的歌詞 */
 .ly { fill: var(--ink); font-family: var(--hand); opacity: 0; transition: opacity .5s ease; }
