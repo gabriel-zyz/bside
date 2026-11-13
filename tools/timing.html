@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>歌词时间校对</title>
+<title>歌词编辑和时间校对</title>
 <link rel="icon" href="data:,">
 <style>
   :root { --bg: #0B0C0B; --ink: #EDE6D3; --dim: #8d887b; --line: #33322e; --hot: #F6DCA6; }
@@ -20,7 +20,9 @@
   button.primary { border-color: var(--hot); color: var(--hot); }
   audio { width: 100%; margin: 4px 0 12px; }
   kbd { display: inline-block; min-width: 22px; padding: 1px 6px; border: 1px solid var(--line); border-radius: 4px; font: 13px ui-monospace, Menlo, monospace; color: var(--ink); text-align: center; }
-  .keys { display: flex; flex-wrap: wrap; gap: 6px 18px; color: var(--dim); font-size: 14px; margin-bottom: 16px; }
+  .keys { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; color: var(--dim); font-size: 14px; margin-bottom: 16px; }
+  .keys b { color: var(--ink); font-weight: 600; white-space: nowrap; }
+  .keys span span { display: inline-block; margin-right: 16px; }
   ol { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); max-height: 52vh; overflow: auto; }
   li { display: grid; grid-template-columns: 34px 78px 1fr; gap: 10px; align-items: baseline; padding: 7px 8px; border-bottom: 1px solid var(--line); cursor: pointer; }
   li .n { color: var(--dim); font-size: 13px; text-align: right; }
@@ -30,33 +32,34 @@
   li.next .x { color: var(--hot); }
   li.playing .x { font-weight: 600; }
   li.sel { outline: 1px solid var(--hot); outline-offset: -1px; }
+  li input.x { font: inherit; color: var(--ink); background: #1b1a16; border: 1px solid var(--hot); border-radius: 4px; padding: 2px 6px; margin: -3px 0; width: 100%; outline: none; }
   #note { color: var(--hot); font-size: 14px; min-height: 21px; margin-bottom: 6px; }
   #status { color: var(--dim); font-size: 14px; }
 </style>
 </head>
 <body>
 <main>
-<h1>歌词时间校对</h1>
-<p>每首歌的歌词只有一个文件（<code id="path"></code>），字和时间都在里面。改字、拆行、并行请用文本编辑器直接改那个文件；这里只负责时间。</p>
+<h1>歌词编辑和时间校对</h1>
+<p>改字、断行、对时间都在这里做，改完点"保存到文件"。这首歌的歌词存在 <code id="path"></code>。</p>
 
 <div class="bar">
   <label for="song">歌：</label>
   <select id="song"></select>
   <button id="play" class="primary" type="button">播放 / 暂停</button>
   <button id="stamp" type="button">打点（空格）</button>
-  <button id="reload" type="button">重新读取文件</button>
+  <button id="add" type="button">加一句</button>
+  <button id="reload" type="button">放弃改动，重新读取</button>
 </div>
 
 <audio id="audio" controls preload="auto"></audio>
 
 <div class="keys">
-  <span><kbd>空格</kbd> 给下一句没有时间的打点</span>
-  <span><kbd>Enter</kbd> 播放 / 暂停</span>
-  <span><kbd>T</kbd> 把选中的那句改成现在这一刻</span>
-  <span><kbd>[</kbd><kbd>]</kbd> 选中的那句提前 / 推后 0.1 秒</span>
-  <span><kbd>⌫</kbd> 清掉选中那句的时间</span>
-  <span><kbd>←</kbd><kbd>→</kbd> 退 / 进 3 秒</span>
-  <span>点某一句：选中它并跳到它的时间</span>
+  <b>改字和断行</b>
+  <span><span><kbd>双击</kbd> 某一句开始改</span><span><kbd>Enter</kbd> 在光标处断成两行</span><span>在行首按 <kbd>⌫</kbd> 并到上一行</span><span>把字删光 = 删掉这一句</span><span><kbd>↑</kbd><kbd>↓</kbd> 换一句接着改</span><span>点别处或按 <kbd>Esc</kbd> 结束</span></span>
+  <b>对时间</b>
+  <span><span><kbd>空格</kbd> 给下一句没有时间的打点</span><span><kbd>T</kbd> 把选中的那句改成现在这一刻</span><span><kbd>[</kbd><kbd>]</kbd> 选中的那句提前 / 推后 0.1 秒</span><span><kbd>⌫</kbd> 清掉选中那句的时间</span></span>
+  <b>播放</b>
+  <span><span><kbd>Enter</kbd> 播放 / 暂停</span><span><kbd>←</kbd><kbd>→</kbd> 退 / 进 3 秒</span><span>单击某一句：选中它并跳到它的时间</span></span>
 </div>
 
 <div id="note"></div>
@@ -78,8 +81,10 @@ let songs = [];
 let song = null;
 let header = [];     // 文件开头的 # 说明行，保存时原样写回
 let lines = [];      // [{ text, t }]，t 为 null 表示还没有时间
-let sel = -1;
+let sel = -1;        // 选中的句子
+let edit = -1;       // 正在改字的句子
 let dirty = false;
+let leaving = false; // 正在结束编辑，忽略随之而来的 blur
 
 const fmt = (t) => {
   if (t == null) return '--:--.--';
@@ -89,6 +94,9 @@ const fmt = (t) => {
 };
 const round = (t) => Math.max(0, Math.round(t * 100) / 100);
 const nextIndex = () => lines.findIndex((l) => l.t == null);
+const ascii = (c) => /[\x21-\x7e]/.test(c || '');
+
+/* ---------- 读写文件 ---------- */
 
 function parse(raw) {
   header = [];
@@ -106,61 +114,159 @@ function parse(raw) {
 
 function serialize() {
   const head = header.length ? header.join('\n') + '\n\n' : '';
-  return head + lines.map((l) => (l.t == null ? l.text : `[${fmt(l.t)}] ${l.text}`)).join('\n') + '\n';
+  const body = lines.filter((l) => l.text.trim());
+  return head + body.map((l) => (l.t == null ? l.text : `[${fmt(l.t)}] ${l.text}`)).join('\n') + '\n';
 }
 
 function touch() { dirty = true; $('#done').textContent = '有改动还没保存'; }
 
-function render() {
+/* ---------- 画列表 ---------- */
+
+/** 行数或正在编辑的行变了：整个列表重画 */
+function rebuild() {
+  // 重画会把旧的输入框拿掉，浏览器会当成它"失去焦点"；这不是使用者结束编辑，要忽略
+  const was = leaving;
+  leaving = true;
+  list.innerHTML = lines.map((l, i) => `<li data-i="${i}"><span class="n">${i + 1}</span><span class="t"></span>${
+    i === edit ? '<input class="x" type="text" autocomplete="off" spellcheck="false" aria-label="这一句的歌词">' : '<span class="x"></span>'}</li>`).join('');
+  leaving = was;
+  list.querySelectorAll('li').forEach((li, i) => {
+    const x = li.querySelector('.x');
+    if (i === edit) x.value = lines[i].text; else x.textContent = lines[i].text;
+  });
+  refresh();
+}
+
+/** 只更新时间、高亮和提示，不动正在输入的那一格 */
+function refresh() {
   const next = nextIndex();
   const now = audio.currentTime;
   let playing = -1;
   lines.forEach((l, i) => { if (l.t != null && l.t <= now) playing = i; });
-  list.innerHTML = lines.map((l, i) => {
-    const cls = [l.t != null ? 'done' : '', i === next ? 'next' : '', i === playing ? 'playing' : '', i === sel ? 'sel' : ''].join(' ');
-    return `<li class="${cls}" data-i="${i}"><span class="n">${i + 1}</span><span class="t">${fmt(l.t)}</span><span class="x"></span></li>`;
-  }).join('');
-  list.querySelectorAll('li').forEach((li, i) => { li.querySelector('.x').textContent = lines[i].text; });
-  const done = lines.filter((l) => l.t != null).length;
-  const order = lines.filter((l) => l.t != null).some((l, i, a) => i > 0 && l.t < a[i - 1].t);
-  $('#status').textContent = `${lines.length} 句，${done} 句有时间` + (next >= 0 ? `，下一句要打点的是第 ${next + 1} 句` : '')
-    + (order ? '。注意：有的句子时间比上一句还早' : '');
-  const focus = list.querySelector('li.playing') || list.querySelector('li.next');
-  if (focus && !audio.paused) focus.scrollIntoView({ block: 'center' });
+  list.querySelectorAll('li').forEach((li, i) => {
+    const l = lines[i];
+    if (!l) return;
+    li.className = [l.t != null ? 'done' : '', i === next ? 'next' : '', i === playing ? 'playing' : '', i === sel ? 'sel' : ''].join(' ');
+    li.querySelector('.t').textContent = fmt(l.t);
+  });
+  const timed = lines.filter((l) => l.t != null);
+  const backwards = timed.some((l, i) => i > 0 && l.t < timed[i - 1].t);
+  $('#status').textContent = `${lines.length} 句，${timed.length} 句有时间`
+    + (next >= 0 ? `，下一句要打点的是第 ${next + 1} 句` : '')
+    + (backwards ? '。注意：有的句子时间比上一句还早' : '');
+  if (edit < 0 && !audio.paused) {
+    const focus = list.querySelector('li.playing') || list.querySelector('li.next');
+    if (focus) focus.scrollIntoView({ block: 'nearest' });
+  }
 }
+
+/* ---------- 改字和断行 ---------- */
+
+function startEdit(i, caret) {
+  if (i < 0 || i >= lines.length) return;
+  edit = i;
+  sel = i;
+  rebuild();
+  const input = list.querySelector('input.x');
+  if (!input) return;
+  input.focus();
+  const pos = caret == null ? input.value.length : Math.min(caret, input.value.length);
+  input.setSelectionRange(pos, pos);
+}
+
+/** 把输入框里的字收回来，结束编辑。字删光了就删掉这一句。回传这一句还在不在 */
+function endEdit() {
+  if (edit < 0) return true;
+  const input = list.querySelector('input.x');
+  const i = edit;
+  const text = input ? input.value.trim() : lines[i].text;
+  let kept = true;
+  if (text !== lines[i].text) touch();
+  if (text) lines[i].text = text;
+  else { lines.splice(i, 1); kept = false; if (sel >= lines.length) sel = lines.length - 1; touch(); }
+  edit = -1;
+  rebuild();
+  return kept;
+}
+
+function onEditKey(e) {
+  if (e.isComposing || e.keyCode === 229) return;   // 输入法正在选字
+  const input = e.target;
+  const i = edit;
+  const pos = input.selectionStart;
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    const a = input.value.slice(0, pos).trim();
+    const b = input.value.slice(input.selectionEnd).trim();
+    if (!a) return;                                   // 光标在行首：没有东西可断
+    lines[i].text = a;
+    lines.splice(i + 1, 0, { text: b, t: null });     // 后半句是新的一行，还没有时间
+    touch();
+    edit = -1;
+    startEdit(i + 1, 0);
+  } else if (e.key === 'Backspace' && pos === 0 && input.selectionEnd === 0 && i > 0) {
+    e.preventDefault();
+    const prev = lines[i - 1];
+    const joint = prev.text.length;
+    const gap = ascii(prev.text.slice(-1)) && ascii(input.value[0]) ? ' ' : '';
+    prev.text = prev.text + gap + input.value.trim();
+    lines.splice(i, 1);                               // 并上去的那一句，时间就不要了
+    touch();
+    edit = -1;
+    startEdit(i - 1, joint + gap.length);
+  } else if (e.key === 'Escape') {
+    e.preventDefault();
+    endEdit();
+  } else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+    e.preventDefault();
+    const kept = endEdit();
+    startEdit(e.key === 'ArrowUp' ? i - 1 : (kept ? i + 1 : i));
+  }
+}
+
+list.addEventListener('keydown', (e) => { if (e.target.matches('input.x')) onEditKey(e); });
+list.addEventListener('focusout', (e) => { if (e.target.matches('input.x') && !leaving) endEdit(); });
+list.addEventListener('dblclick', (e) => {
+  const li = e.target.closest('li');
+  if (li && !e.target.matches('input.x')) startEdit(Number(li.dataset.i));
+});
+
+/* ---------- 对时间 ---------- */
 
 function stamp() {
   const i = nextIndex();
   if (i < 0) return;
   lines[i].t = round(audio.currentTime);
   sel = i;
-  touch(); render();
+  touch(); refresh();
 }
 
 function retime() {
   if (sel < 0) return;
   lines[sel].t = round(audio.currentTime);
-  touch(); render();
+  touch(); refresh();
 }
 
 function nudge(d) {
   if (sel < 0 || lines[sel].t == null) return;
   lines[sel].t = round(lines[sel].t + d);
   audio.currentTime = lines[sel].t;
-  touch(); render();
+  touch(); refresh();
 }
 
 function clearSel() {
   if (sel < 0 || lines[sel].t == null) return;
   lines[sel].t = null;
-  touch(); render();
+  touch(); refresh();
 }
+
+/* ---------- 读取和保存 ---------- */
 
 async function load(id) {
   if (dirty && !confirm('有改动还没保存，确定丢掉？')) { $('#song').value = song.id; return; }
   song = songs.find((s) => s.id === id);
   $('#path').textContent = song.lyrics || '（这首歌在 songs.json 里还没有 lyrics）';
-  if (audio.src.split('/').pop() !== song.audio.split('/').pop()) audio.src = '../' + song.audio;
+  if (decodeURIComponent(audio.src).split('/').pop() !== song.audio.split('/').pop()) audio.src = '../' + song.audio;
   lines = [];
   if (song.lyrics) {
     try {
@@ -169,17 +275,19 @@ async function load(id) {
     } catch (e) { /* 读不到就当作空的 */ }
   }
   sel = -1;
+  edit = -1;
   dirty = false;
   $('#done').textContent = '';
   const missing = lines.filter((l) => l.t == null).length;
-  $('#note').textContent = !lines.length ? '这首歌还没有歌词。先把歌词一行一句写进上面那个文件。'
+  $('#note').textContent = !lines.length ? '这首歌还没有歌词。点"加一句"开始写，写完一句按 Enter 接着写下一句。'
     : missing ? `有 ${missing} 句还没有时间。放歌，唱到那一句的开头时按空格。`
     : '每一句都有时间了。播放时看加粗的那一句是不是正在唱的；不对就点它，再按 T 或 [ ] 调整。';
-  render();
+  rebuild();
 }
 
 async function save() {
   if (!song.lyrics) return;
+  endEdit();
   try {
     const res = await fetch('../' + song.lyrics, { method: 'PUT', body: serialize(), headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
     if (!res.ok) throw new Error(String(res.status));
@@ -194,29 +302,36 @@ $('#play').onclick = () => { if (audio.paused) audio.play(); else audio.pause();
 $('#stamp').onclick = stamp;
 $('#reload').onclick = () => load(song.id);
 $('#save').onclick = save;
+$('#add').onclick = () => {
+  endEdit();
+  const at = sel >= 0 ? sel + 1 : lines.length;
+  lines.splice(at, 0, { text: '', t: null });
+  startEdit(at, 0);
+};
 $('#song').onchange = (e) => load(e.target.value);
 $('#download').onclick = () => {
+  endEdit();
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([serialize()], { type: 'text/plain;charset=utf-8' }));
   a.download = song.lyrics.split('/').pop();
   a.click();
   URL.revokeObjectURL(a.href);
 };
-list.onclick = (e) => {
+list.addEventListener('click', (e) => {
   const li = e.target.closest('li');
-  if (!li) return;
+  if (!li || e.target.matches('input.x')) return;
   sel = Number(li.dataset.i);
-  if (lines[sel].t != null) audio.currentTime = lines[sel].t;
-  render();
-};
-audio.addEventListener('timeupdate', render);
+  if (lines[sel] && lines[sel].t != null) audio.currentTime = lines[sel].t;
+  refresh();
+});
+audio.addEventListener('timeupdate', refresh);
 // 按钮和播放条不留焦点，否则空格会同时触发它们自己的动作
 document.addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) b.blur(); });
 audio.addEventListener('focus', () => audio.blur());
 window.addEventListener('beforeunload', (e) => { if (dirty) { e.preventDefault(); e.returnValue = ''; } });
 
 document.addEventListener('keydown', (e) => {
-  if (e.target.tagName === 'SELECT') return;
+  if (e.target.tagName === 'SELECT' || e.target.tagName === 'INPUT') return;   // 正在打字时，快捷键不生效
   if (e.key === ' ') { e.preventDefault(); stamp(); }
   else if (e.key === 'Enter') { e.preventDefault(); $('#play').onclick(); }
   else if (e.key === 'Backspace') { e.preventDefault(); clearSel(); }
