@@ -6,7 +6,8 @@
       "title": "蘇州，good night",
       "date": "2010-12-20",
       "audio": "audio/suzhou-good-night.mp3",
-      "lyrics": null
+      "lyrics": "lyrics/suzhou-good-night.lrc",
+      "lyricsText": "lyrics/suzhou-good-night.txt"
     },
     { "id": "dev-tone-1", "title": "測試一", "date": "2011-11-09", "audio": "audio/dev/tone-1.mp3", "lyrics": "lyrics/dev-tone-1.lrc", "dev": true },
     { "id": "dev-tone-2", "title": "測試二 test", "date": "2012-07-03", "audio": "audio/dev/tone-2.mp3", "lyrics": null, "dev": true },
