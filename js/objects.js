@@ -99,7 +99,9 @@ export function standingRecord(song, i, phi, depth, lean = 0, cls = '') {
 export function box(phi) {
   const [ux, uy] = up(110, phi);
   const [cx, cy] = face(phi);
+  // 先畫盒底：盒子空了以後，從上面的開口看進去要看到盒底，而不是壓在盒子下面的東西
   const back = `
+<polygon class="s" points="${p(0, 0)} ${p(330, 0)} ${p(330, 240)} ${p(0, 240)}"></polygon>
 <polygon class="s" points="${p(0, 0)} ${p(330, 0)} ${p(330 + ux, uy)} ${p(ux, uy)}"></polygon>
 <polygon class="s" points="${p(0, 0)} ${p(0, 240)} ${p(ux, 240 + uy)} ${p(ux, uy)}"></polygon>`;
   const front = `
