@@ -1,4 +1,4 @@
-// 把桌面畫出來，並處理所有操作：拖唱片、播放、按鈕、進度、時鐘、歌詞、手機上的挑歌。
+// 把桌面畫出來，並處理所有操作：開燈關燈、拖唱片、播放、按鈕、進度、時鐘、歌詞、手機上的挑歌、關燈後的播放器。
 
 import { K, pageEdge, f1 } from './projection.js';
 import * as O from './objects.js';
@@ -8,6 +8,7 @@ import { parseLyrics, spreadOf, slotOf, rangeOf, activeAt } from './lyrics.js';
 
 const $ = (sel) => document.querySelector(sel);
 const stage = $('#stage');
+const desk = $('#desk');
 const audio = $('#audio');
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
@@ -26,6 +27,10 @@ const state = {
   spread: 0,
   active: -1,
   flipping: false,
+  light: 'off',      // 'off' 還沒開燈；'on' 桌面；'player' 關了燈，只剩播放器
+  nowLine: -2,       // 播放器裡目前標亮的是第幾句
+  swallow: 0,        // 這個時間點之前的 click 不處理（同一下點擊已經用掉了）
+  credits: '',
 };
 
 const cur = () => (state.current == null ? null : state.songs[state.current]);
@@ -74,10 +79,11 @@ function build() {
   // 畫面拆成幾層疊在一起：唱片轉動、歌詞出現時，只需要重畫那一層，
   // 不用每一幀都重算整張桌面的粉筆效果。
   const open = (id, extra = '') => `<svg id="${id}" class="layer" viewBox="0 0 ${L.w} ${L.h}" preserveAspectRatio="xMidYMid meet" ${extra}>`;
-  const playing = stage.classList.contains('is-playing');
-  stage.className = state.layout + (playing ? ' is-playing' : '');
-  stage.innerHTML = `${open('scene', 'role="application" aria-label="桌上有一台唱片機和一盒唱片。把唱片放到唱片機上就會播放。"')}
-<defs>${chalkFilters(state.layout === 'mobile' ? 3 : 4)}</defs>
+  stage.classList.remove('desktop', 'mobile');
+  stage.classList.add(state.layout);
+  $('#defs').innerHTML = `<defs>${chalkFilters(state.layout === 'mobile' ? 3 : 4)}</defs>`;
+  const [lx, ly, lr, lsy] = L.light;
+  desk.innerHTML = `${open('scene', 'role="application" aria-label="桌上有一台唱片機和一盒唱片。把唱片放到唱片機上就會播放。"')}
 <rect class="hit" id="backdrop" x="0" y="0" width="${L.w}" height="${L.h}"></rect>
 ${below}
 </svg>
@@ -90,10 +96,79 @@ ${open('layer-rec', 'aria-hidden="true"')}
 ${open('layer-top')}
 <g class="chalk boil"><g transform="${plane}"><g transform="${place(ttItem)}">${tt.above}</g></g>${screenControls}</g>
 <g class="chalk"><g id="plane-top" transform="${plane}"><g id="held" visibility="hidden"></g></g></g>
+</svg>
+${open('layer-shade', 'aria-hidden="true"')}
+<defs><radialGradient id="lightfall" gradientUnits="userSpaceOnUse" cx="${lx}" cy="${ly}" r="${lr}" gradientTransform="translate(${lx} ${ly}) scale(1 ${lsy}) translate(${-lx} ${-ly})">
+<stop offset="0" stop-color="#0B0C0B" stop-opacity="0"></stop><stop offset="0.6" stop-color="#0B0C0B" stop-opacity="0"></stop><stop offset="0.85" stop-color="#0B0C0B" stop-opacity="0.6"></stop><stop offset="1" stop-color="#0B0C0B" stop-opacity="0.88"></stop>
+</radialGradient></defs>
+<rect x="${-L.w}" y="${-L.h}" width="${L.w * 3}" height="${L.h * 3}" fill="url(#lightfall)"></rect>
+</svg>
+${open('layer-lamp')}
+<g class="chalk boil"><g transform="${plane}"><g id="obj-lamp" transform="${place(['lamp', ...L.lamp])}">${O.lamp()}</g></g></g>
 </svg>`;
 
   for (const g of document.querySelectorAll('.chalk')) g.setAttribute('filter', 'url(#ck1)');
   restore();
+}
+
+/* ---------- 開燈、關燈 ---------- */
+
+function setLight(mode) {
+  const was = state.light;
+  state.light = mode;
+  stage.classList.toggle('light-off', mode === 'off');
+  stage.classList.toggle('light-on', mode === 'on');
+  stage.classList.toggle('mode-player', mode === 'player');
+  $('#player').setAttribute('aria-hidden', String(mode !== 'player'));
+  if (mode === 'on' && was === 'off') {
+    stage.classList.add('just-lit');
+    setTimeout(() => stage.classList.remove('just-lit'), 1200);
+  }
+  setTimeout(() => sfx.click(), 120);   // 第一次點擊時聲音還在啟動，稍等一下才出得了聲
+  if (mode === 'player') { state.nowLine = -2; markPlayer(true); }
+}
+
+/** 點檯燈：正在聽歌就關燈變成播放器；沒有歌就只是關燈 */
+function lampSwitch() {
+  if (state.light !== 'on') { setLight('on'); return; }
+  if (state.browse) closeBrowse();
+  setLight(state.current != null ? 'player' : 'off');
+}
+
+/* ---------- 關燈後的播放器 ---------- */
+
+function buildPlayer() {
+  $('#p-controls').innerHTML = `<g class="chalk boil">${O.seekLine(20, 300, 22)}${O.controls([96, 160, 224], 82, 24)}</g>`;
+}
+
+function renderPlayer() {
+  const song = cur();
+  $('#p-title').textContent = song ? song.title : '';
+  $('#p-credits').textContent = song ? (song.credits || state.credits) : '';
+  const box = $('#p-lyrics');
+  box.innerHTML = state.lyrics.map((l, k) => `<p class="pl" data-k="${k}">${O.esc(l.text)}</p>`).join('')
+    || (song ? '<p class="p-empty">這首歌還沒有歌詞</p>' : '');
+  box.scrollTop = 0;
+  state.nowLine = -2;
+  markPlayer(true);
+}
+
+/** 標出正在唱的那一句，並把它捲到中間 */
+function markPlayer(jump = false) {
+  const a = activeAt(state.lyrics, audio.currentTime);
+  if (a === state.nowLine && !jump) return;
+  state.nowLine = a;
+  let now = null;
+  for (const el of document.querySelectorAll('#p-lyrics .pl')) {
+    const k = Number(el.dataset.k);
+    el.classList.toggle('past', k < a);
+    el.classList.toggle('now', k === a);
+    if (k === a) now = el;
+  }
+  if (state.light !== 'player') return;
+  const box = $('#p-lyrics');
+  if (now) box.scrollTo({ top: now.offsetTop - box.clientHeight / 2 + now.clientHeight / 2, behavior: jump || reduced ? 'auto' : 'smooth' });
+  else box.scrollTo({ top: 0, behavior: 'auto' });
 }
 
 /** 重畫之後，把畫面恢復成目前的狀態 */
@@ -325,8 +400,7 @@ const isPlaying = () => !audio.paused && !audio.muted;
 function updatePlaying() {
   const on = isPlaying();
   stage.classList.toggle('is-playing', on);
-  const btn = $('#btn-play');
-  if (btn) {
+  for (const btn of document.querySelectorAll('.btn[data-act="play"]')) {
     btn.querySelector('.icon').innerHTML = on ? O.ICON.pause : O.ICON.play;
     btn.setAttribute('aria-label', on ? '暫停' : '播放');
   }
@@ -350,21 +424,20 @@ function armToTime(track = false) {
 }
 
 function updateProgress() {
-  const seek = $('#seek');
-  if (!seek) return;
-  const x0 = Number(seek.dataset.x0);
-  const x1 = Number(seek.dataset.x1);
   const p = state.current == null ? 0 : progress();
-  const x = f1(x0 + (x1 - x0) * p);
-  const knob = $('#seek-knob');
-  const y = knob.getAttribute('cy');
-  knob.setAttribute('cx', x);
-  $('#seek-done').setAttribute('d', `M${x0},${y} L${x},${y}`);
-  seek.setAttribute('aria-valuenow', Math.round(p * 100));
+  for (const seek of document.querySelectorAll('.seek')) {   // 桌面上一條，播放器裡一條
+    const x0 = Number(seek.dataset.x0);
+    const x1 = Number(seek.dataset.x1);
+    const x = f1(x0 + (x1 - x0) * p);
+    const knob = seek.querySelector('.seek-knob');
+    const y = knob.getAttribute('cy');
+    knob.setAttribute('cx', x);
+    seek.querySelector('.seek-done').setAttribute('d', `M${x0},${y} L${x},${y}`);
+    seek.setAttribute('aria-valuenow', Math.round(p * 100));
+  }
 }
 
-function seekFromPointer(e) {
-  const seek = $('#seek');
+function seekFromPointer(e, seek) {
   if (!seek || state.current == null || !(audio.duration > 0)) return;
   const pt = new DOMPoint(e.clientX, e.clientY).matrixTransform(seek.getScreenCTM().inverse());
   const x0 = Number(seek.dataset.x0);
@@ -377,6 +450,7 @@ function onTime() {
   updateProgress();
   if (state.settled && !state.starting) armToTime(isPlaying());
   updateLyrics(audio.currentTime);
+  markPlayer();
 }
 
 function setMediaSession(song) {
@@ -401,6 +475,7 @@ async function loadLyrics(song, token) {
   state.spread = 0;
   state.active = -1;
   renderSpread(0);
+  renderPlayer();
   if (!song.lyrics) return;
   try {
     const res = await fetch(song.lyrics);
@@ -409,6 +484,7 @@ async function loadLyrics(song, token) {
     if (token !== state.token) return;
     state.lyrics = lines;
     renderSpread(0);
+    renderPlayer();
   } catch { /* 沒有歌詞就留白 */ }
 }
 
@@ -544,13 +620,20 @@ function onDown(e) {
   sfx.unlock();
   if (e.button > 0) return;
   const svg = stage;
-  if (e.target.closest('.btn')) return;
-  if (e.target.closest('#seek')) {
-    ptr = { type: 'seek' };
-    svg.setPointerCapture(e.pointerId);
-    seekFromPointer(e);
+  if (state.light === 'off') {            // 還沒開燈：點哪裡都是開燈
+    setLight('on');
+    state.swallow = performance.now() + 500;
     return;
   }
+  if (e.target.closest('[data-act]')) return;
+  const seek = e.target.closest('.seek');
+  if (seek) {
+    ptr = { type: 'seek', seek };
+    svg.setPointerCapture(e.pointerId);
+    seekFromPointer(e, seek);
+    return;
+  }
+  if (state.light === 'player') return;   // 播放器裡其他地方照常捲動、點歌詞
   const recEl = e.target.closest('.rec');
   const rec = recEl ? Number(recEl.dataset.i) : null;
   const onBox = Boolean(e.target.closest('#obj-box'));
@@ -566,7 +649,7 @@ function onDown(e) {
 
 function onMove(e) {
   if (!ptr) return;
-  if (ptr.type === 'seek') { seekFromPointer(e); return; }
+  if (ptr.type === 'seek') { seekFromPointer(e, ptr.seek); return; }
   const dist = Math.hypot(e.clientX - ptr.x0, e.clientY - ptr.y0);
   if (dist > 8) ptr.moved = true;
   if (ptr.type === 'drag-pending' && dist > 5) {
@@ -622,6 +705,7 @@ function onUp(e) {
         renderBox();
       } else if (!p.onBox) {
         closeBrowse();
+        state.swallow = performance.now() + 400;   // 這一下只是收起盒子，不要順便點到筆記本
       }
     } else if (p.onBox) {
       openBrowse(p.rec);
@@ -687,21 +771,41 @@ function onOut(e) {
   if (to !== rec) setHover(to ? Number(to.dataset.i) : null);
 }
 
-function press(id) {
-  if (id === 'btn-play') toggle();
-  else if (id === 'btn-prev') step(-1);
-  else if (id === 'btn-next') step(1);
+function press(act) {
+  if (act === 'play') toggle();
+  else if (act === 'prev') step(-1);
+  else if (act === 'next') step(1);
+  else if (act === 'lamp') lampSwitch();
+  else if (act === 'close') setLight('on');
 }
 
 function onClick(e) {
-  const btn = e.target.closest('.btn');
-  if (btn) press(btn.id);
+  if (performance.now() < state.swallow) return;
+  const el = e.target.closest('[data-act]');
+  if (el) { press(el.dataset.act); return; }
+  if (state.light === 'player') {
+    // 點某一句歌詞：跳到那一句
+    const line = e.target.closest('.pl');
+    if (line && state.lyrics[line.dataset.k] && audio.duration > 0) {
+      audio.currentTime = state.lyrics[line.dataset.k].t;
+      onTime();
+    }
+    return;
+  }
+  // 點筆記本：正在聽歌的話，關燈變成播放器
+  if (state.light === 'on' && !state.browse && state.current != null && e.target.closest('#obj-notebook')) setLight('player');
 }
 
 function onKey(e) {
-  const btn = e.target.closest ? e.target.closest('.btn') : null;
-  if (btn && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); sfx.unlock(); press(btn.id); return; }
-  if (e.target.id === 'seek' && (e.key === 'ArrowLeft' || e.key === 'ArrowRight') && audio.duration > 0) {
+  if (e.key === 'Escape' && state.light === 'player') { setLight('on'); return; }
+  const btn = e.target.closest ? e.target.closest('[data-act]') : null;
+  if (btn && (e.key === 'Enter' || e.key === ' ')) {
+    e.preventDefault();
+    sfx.unlock();
+    if (state.light === 'off') setLight('on'); else press(btn.dataset.act);
+    return;
+  }
+  if (e.target.classList && e.target.classList.contains('seek') && (e.key === 'ArrowLeft' || e.key === 'ArrowRight') && audio.duration > 0) {
     e.preventDefault();
     audio.currentTime = clamp(audio.currentTime + (e.key === 'ArrowRight' ? 5 : -5), 0, audio.duration);
     onTime();
@@ -729,7 +833,10 @@ async function init() {
   state.credits = data.credits || '';
   state.layout = pickLayout();
   bind();
+  buildPlayer();
   build();
+  renderPlayer();
+  setLight(new URLSearchParams(location.search).has('lit') ? 'on' : 'off');   // ?lit=1：測試時跳過開燈
 
   audio.addEventListener('play', updatePlaying);
   audio.addEventListener('pause', updatePlaying);
@@ -758,12 +865,14 @@ async function init() {
 
   // 還沒放唱片時，第一張偶爾抬一下，提示可以拿
   setInterval(() => {
-    if (state.current != null || state.hover != null || ptr || state.browse || document.hidden) return;
+    if (state.light !== 'on' || state.current != null || state.hover != null || ptr || state.browse || document.hidden) return;
     const first = document.querySelector('.rec[data-i="0"]');
     if (!first) return;
     first.classList.add('peek');
     setTimeout(() => first.classList.remove('peek'), 700);
   }, 9000);
+
+  window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && state.light === 'player') setLight('on'); });
 
   let timer = 0;
   window.addEventListener('resize', () => {
@@ -778,7 +887,7 @@ async function init() {
     }, 150);
   });
 
-  if (dev) window.__app = { state, audio, putOn, toggle, step, openBrowse, closeBrowse, browseStep };
+  if (dev) window.__app = { state, audio, putOn, toggle, step, openBrowse, closeBrowse, browseStep, setLight, lampSwitch };
 }
 
 init();

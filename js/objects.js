@@ -116,8 +116,8 @@ export const ARM = { pivot: [440, 72], rest: -44.5, start: -20.6, end: 0.9 };
 export const PLATTER = [195, 200];
 export const SEEK = { x0: 28, x1: 350, y: 384 };
 
-function deckButton(id, cx, cy, label, icon, r) {
-  return `<g class="btn" id="${id}" role="button" tabindex="0" aria-label="${label}"><circle class="hit" cx="${cx}" cy="${cy}" r="${r + 7}"></circle><circle class="l ring" cx="${cx}" cy="${cy}" r="${r}"></circle><g transform="translate(${cx} ${cy}) scale(${f1(r / 17)})" class="icon">${icon}</g></g>`;
+function deckButton(act, cx, cy, label, icon, r) {
+  return `<g class="btn" data-act="${act}" role="button" tabindex="0" aria-label="${label}"><circle class="hit" cx="${cx}" cy="${cy}" r="${r + 7}"></circle><circle class="l ring" cx="${cx}" cy="${cy}" r="${r}"></circle><g transform="translate(${cx} ${cy}) scale(${f1(r / 17)})" class="icon">${icon}</g></g>`;
 }
 
 export const ICON = {
@@ -129,17 +129,17 @@ export const ICON = {
 
 /** 進度線。畫在 (x0,y)–(x1,y) 之間 */
 export function seekLine(x0, x1, y) {
-  return `<g class="seek" id="seek" role="slider" tabindex="0" aria-label="播放進度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" data-x0="${x0}" data-x1="${x1}">
+  return `<g class="seek" role="slider" tabindex="0" aria-label="播放進度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" data-x0="${x0}" data-x1="${x1}">
 <rect class="hit" x="${x0 - 8}" y="${y - 14}" width="${x1 - x0 + 16}" height="28"></rect>
 <path class="g" d="M${x0},${y} L${x1},${y}"></path>
-<path class="l" id="seek-done" d="M${x0},${y} L${x0},${y}"></path>
-<circle class="s" id="seek-knob" cx="${x0}" cy="${y}" r="4.5"></circle></g>`;
+<path class="l seek-done" d="M${x0},${y} L${x0},${y}"></path>
+<circle class="s seek-knob" cx="${x0}" cy="${y}" r="4.5"></circle></g>`;
 }
 
 export function controls(xs, y, r = 17) {
-  return deckButton('btn-prev', xs[0], y, '上一首', ICON.prev, r)
-    + deckButton('btn-play', xs[1], y, '播放', ICON.play, r)
-    + deckButton('btn-next', xs[2], y, '下一首', ICON.next, r);
+  return deckButton('prev', xs[0], y, '上一首', ICON.prev, r)
+    + deckButton('play', xs[1], y, '播放', ICON.play, r)
+    + deckButton('next', xs[2], y, '下一首', ICON.next, r);
 }
 
 /**
@@ -368,6 +368,20 @@ export function headphones(phi) {
 <circle class="f" cx="-62" cy="0" r="27"></circle>
 <circle class="s" cx="62" cy="0" r="40"></circle>
 <circle class="f" cx="62" cy="0" r="27"></circle>
+</g>`;
+}
+
+/** 檯燈：從桌子右上角伸進來，燈罩朝著桌面。整個是一個可以點的開關 */
+export function lamp() {
+  return `<g class="btn" data-act="lamp" role="button" tabindex="0" aria-label="檯燈">
+<circle class="hit" cx="-45" cy="45" r="105"></circle>
+<path class="to" stroke-width="9" d="M170,-170 L18,-14"></path>
+<path class="ti" stroke-width="6.7" d="M170,-170 L18,-14"></path>
+<circle class="s" cx="0" cy="0" r="22"></circle>
+<polygon class="s" points="14.6,16.5 -28.9,108.4 -111.1,15.6 -14.6,-16.5"></polygon>
+<ellipse class="s ring" cx="-70" cy="62" rx="62" ry="30" transform="rotate(48.5 -70 62)"></ellipse>
+<circle class="l" cx="-66" cy="58" r="13"></circle>
+<path class="f rays" d="M-104,96 l-22,20 M-84,112 l-14,27 M-122,74 l-28,10 M-58,118 l-4,30 M-134,48 l-30,-2"></path>
 </g>`;
 }
 

@@ -9,7 +9,34 @@
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-<main id="stage"></main>
+<!-- 粉筆線條的濾鏡，整個頁面共用 -->
+<svg id="defs" width="0" height="0" aria-hidden="true" focusable="false"><defs></defs></svg>
+
+<main id="stage" class="light-off">
+  <!-- 桌面：由 js/app.js 畫出來 -->
+  <div id="desk"></div>
+
+  <!-- 還沒開燈時 -->
+  <div id="welcome">
+    <svg viewBox="0 0 600 200" role="img" aria-label="歡迎，請點擊屏幕開燈">
+      <g class="chalk boil"><text class="tx" x="300" y="108" text-anchor="middle" font-size="34">歡迎，請點擊屏幕開燈</text></g>
+    </svg>
+  </div>
+
+  <!-- 關燈後的播放器 -->
+  <section id="player" aria-hidden="true" aria-label="播放器">
+    <button class="p-x" type="button" data-act="close" aria-label="回到桌面">
+      <svg viewBox="0 0 44 44" aria-hidden="true"><g class="chalk boil"><path class="l" d="M13,13 L31,31 M31,13 L13,31"></path></g></svg>
+    </button>
+    <header class="p-head">
+      <h1 id="p-title"></h1>
+      <p id="p-credits"></p>
+    </header>
+    <div id="p-lyrics"></div>
+    <svg id="p-controls" viewBox="0 0 320 124" role="group" aria-label="播放控制"></svg>
+  </section>
+</main>
+
 <audio id="audio" preload="metadata" playsinline></audio>
 <script type="module" src="js/app.js"></script>
 </body>

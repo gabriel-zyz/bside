@@ -50,9 +50,9 @@ html, body {
 
 .layer * { vector-effect: non-scaling-stroke; }
 
-/* 上面幾層只是疊上去的畫，不擋住下面的操作；手機上的按鈕和進度線例外 */
-#layer-text, #layer-rec, #layer-top { pointer-events: none; }
-#layer-top .btn, #layer-top .seek { pointer-events: auto; }
+/* 上面幾層只是疊上去的畫，不擋住下面的操作；手機上的按鈕、進度線和檯燈例外 */
+#layer-text, #layer-rec, #layer-top, #layer-shade, #layer-lamp { pointer-events: none; }
+#layer-top .btn, #layer-top .seek, #layer-lamp .btn { pointer-events: auto; }
 
 /* 線條的幾種筆觸 */
 .s { fill: var(--bg); stroke: var(--ink); stroke-width: var(--w, 1.7); stroke-linejoin: round; stroke-linecap: round; }
@@ -93,7 +93,7 @@ html, body {
 .btn:hover .ring, .btn:focus-visible .ring { stroke-width: 2.6; }
 /* 進度線不要瀏覽器預設的方框；用鍵盤選到它時，改成把圓點加粗來示意 */
 .seek { cursor: pointer; outline: none; }
-.seek:focus-visible #seek-knob { stroke-width: 3; }
+.seek:focus-visible .seek-knob { stroke-width: 3; }
 
 /* 筆記本上的歌詞 */
 .ly { fill: var(--ink); font-family: var(--hand); opacity: 0; transition: opacity .5s ease; }
@@ -105,4 +105,135 @@ html, body {
 @media (prefers-reduced-motion: reduce) {
   .spin { animation: none; }
   .rec .lift, #arm { transition: none; }
+}
+
+/* ---------- 開燈、關燈 ---------- */
+
+#desk {
+  position: absolute;
+  inset: 0;
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 1.1s ease, visibility 0s;
+}
+.light-off #desk, .mode-player #desk {
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity .5s ease, visibility 0s linear .5s;
+}
+/* 剛開燈的那一下：閃兩下才亮穩 */
+.just-lit #desk { animation: lit 1.1s ease-out; }
+@keyframes lit {
+  0% { opacity: 0; }
+  8% { opacity: .75; }
+  14% { opacity: .12; }
+  30% { opacity: .9; }
+  38% { opacity: .55; }
+  100% { opacity: 1; }
+}
+
+#obj-notebook { cursor: pointer; }
+
+#welcome {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: opacity .4s ease, visibility 0s;
+}
+#welcome svg {
+  width: min(86vw, 640px);
+  height: auto;
+  overflow: visible;
+  font-family: var(--hand);
+  animation: sway 3.4s ease-in-out infinite alternate;
+}
+.light-on #welcome, .mode-player #welcome {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity .4s ease, visibility 0s linear .4s;
+}
+@keyframes sway {
+  from { transform: translate(-3px, 2px) rotate(-1.4deg); }
+  to { transform: translate(3px, -2px) rotate(1.2deg); }
+}
+
+/* ---------- 關燈後的播放器 ---------- */
+
+#player {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: max(20px, env(safe-area-inset-top)) 20px max(20px, env(safe-area-inset-bottom));
+  font-family: var(--hand);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity .5s ease, visibility 0s linear .5s;
+}
+.mode-player #player {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transition: opacity .7s ease .2s, visibility 0s;
+}
+#player * { vector-effect: non-scaling-stroke; }
+
+.p-x {
+  position: absolute;
+  top: max(12px, env(safe-area-inset-top));
+  right: 12px;
+  width: 52px;
+  height: 52px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  cursor: pointer;
+}
+.p-x svg { width: 100%; height: 100%; display: block; }
+.p-x:hover .l, .p-x:focus-visible .l { stroke-width: 2.8; }
+.p-x:focus { outline: none; }
+
+.p-head { text-align: center; margin-top: 34px; padding: 0 44px; }
+#p-title { margin: 0; font-size: clamp(26px, 4.2vw, 40px); font-weight: 400; line-height: 1.3; }
+#p-credits { margin: 6px 0 0; font-size: 15px; opacity: .55; }
+
+#p-lyrics {
+  position: relative;   /* 讓每一句的位置以這個捲動區為準，才能把正在唱的那句捲到正中間 */
+  flex: 1 1 auto;
+  width: min(100%, 560px);
+  min-height: 0;
+  overflow-y: auto;
+  padding: 30vh 0;
+  text-align: center;
+  scrollbar-width: none;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 22%, #000 78%, transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 22%, #000 78%, transparent 100%);
+}
+#p-lyrics::-webkit-scrollbar { display: none; }
+.pl {
+  margin: 0;
+  padding: 7px 8px;
+  font-size: clamp(19px, 2.4vw, 23px);
+  line-height: 1.5;
+  opacity: .28;
+  cursor: pointer;
+  transition: opacity .4s ease, transform .4s ease;
+}
+.pl.past { opacity: .45; }
+.pl.now { opacity: 1; transform: scale(1.12); }
+.p-empty { opacity: .4; font-size: 17px; padding-top: 8px; }
+
+#p-controls { flex: 0 0 auto; width: min(100%, 340px); height: auto; overflow: visible; }
+
+@media (prefers-reduced-motion: reduce) {
+  #welcome svg, .just-lit #desk { animation: none; }
+  .pl { transition: none; }
 }
