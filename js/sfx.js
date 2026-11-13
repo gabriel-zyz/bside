@@ -27,22 +27,6 @@ export function thump() {
   osc.stop(t + 0.18);
 }
 
-/** 檯燈開關的一聲 */
-export function click() {
-  if (!ready()) return;
-  const t = ctx.currentTime;
-  const osc = ctx.createOscillator();
-  const gain = ctx.createGain();
-  osc.type = 'square';
-  osc.frequency.setValueAtTime(1500, t);
-  osc.frequency.exponentialRampToValueAtTime(380, t + 0.03);
-  gain.gain.setValueAtTime(0.12, t);
-  gain.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
-  osc.connect(gain).connect(ctx.destination);
-  osc.start(t);
-  osc.stop(t + 0.06);
-}
-
 /** 落針後的沙沙聲，長度約 seconds 秒 */
 export function needle(seconds = 1.1) {
   if (!ready()) return;

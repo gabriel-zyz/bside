@@ -134,6 +134,9 @@ html, body {
 
 #obj-notebook { cursor: pointer; }
 
+/* 燈罩口：亮著的燈 */
+.mouth { fill: #F3DDAE; fill-opacity: .9; }
+
 #welcome {
   position: absolute;
   inset: 0;

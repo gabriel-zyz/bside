@@ -82,7 +82,21 @@ function build() {
   stage.classList.remove('desktop', 'mobile');
   stage.classList.add(state.layout);
   $('#defs').innerHTML = `<defs>${chalkFilters(state.layout === 'mobile' ? 3 : 4)}</defs>`;
-  const [lx, ly, lr, lsy] = L.light;
+  const [px, py, prx, pry] = L.light.pool;
+  const [dx, dy, drx, dry] = L.light.dark;
+  const [lampX, lampY, lampS] = L.lamp;
+  const lampAt = `translate(${lampX} ${lampY}) scale(${lampS})`;
+  // 光束：從燈罩口往桌面打開的一片，越遠越淡
+  const { mouth, dir, across, half } = O.LAMP;
+  const reach = 560;
+  const spread = 330;
+  const far = [mouth[0] + dir[0] * reach, mouth[1] + dir[1] * reach];
+  const beam = [
+    [mouth[0] + across[0] * half, mouth[1] + across[1] * half],
+    [far[0] + across[0] * spread, far[1] + across[1] * spread],
+    [far[0] - across[0] * spread, far[1] - across[1] * spread],
+    [mouth[0] - across[0] * half, mouth[1] - across[1] * half],
+  ].map(([x, y]) => `${f1(x)},${f1(y)}`).join(' ');
   desk.innerHTML = `${open('scene', 'role="application" aria-label="桌上有一台唱片機和一盒唱片。把唱片放到唱片機上就會播放。"')}
 <rect class="hit" id="backdrop" x="0" y="0" width="${L.w}" height="${L.h}"></rect>
 ${below}
@@ -98,13 +112,24 @@ ${open('layer-top')}
 <g class="chalk"><g id="plane-top" transform="${plane}"><g id="held" visibility="hidden"></g></g></g>
 </svg>
 ${open('layer-shade', 'aria-hidden="true"')}
-<defs><radialGradient id="lightfall" gradientUnits="userSpaceOnUse" cx="${lx}" cy="${ly}" r="${lr}" gradientTransform="translate(${lx} ${ly}) scale(1 ${lsy}) translate(${-lx} ${-ly})">
-<stop offset="0" stop-color="#0B0C0B" stop-opacity="0"></stop><stop offset="0.6" stop-color="#0B0C0B" stop-opacity="0"></stop><stop offset="0.85" stop-color="#0B0C0B" stop-opacity="0.6"></stop><stop offset="1" stop-color="#0B0C0B" stop-opacity="0.88"></stop>
-</radialGradient></defs>
-<rect x="${-L.w}" y="${-L.h}" width="${L.w * 3}" height="${L.h * 3}" fill="url(#lightfall)"></rect>
+<defs>
+<radialGradient id="light-dark" gradientUnits="userSpaceOnUse" cx="${dx}" cy="${dy}" r="${drx}" gradientTransform="translate(${dx} ${dy}) scale(1 ${f1((dry / drx) * 100) / 100}) translate(${-dx} ${-dy})">
+<stop offset="0" stop-color="#0B0C0B" stop-opacity="0"></stop><stop offset="0.5" stop-color="#0B0C0B" stop-opacity="0"></stop><stop offset="0.78" stop-color="#0B0C0B" stop-opacity="0.62"></stop><stop offset="1" stop-color="#0B0C0B" stop-opacity="0.93"></stop>
+</radialGradient>
+<radialGradient id="light-pool" gradientUnits="userSpaceOnUse" cx="${px}" cy="${py}" r="${prx}" gradientTransform="translate(${px} ${py}) scale(1 ${f1((pry / prx) * 100) / 100}) translate(${-px} ${-py})">
+<stop offset="0" stop-color="#FFECC4" stop-opacity="0.15"></stop><stop offset="0.45" stop-color="#FFECC4" stop-opacity="0.1"></stop><stop offset="1" stop-color="#FFECC4" stop-opacity="0"></stop>
+</radialGradient>
+<linearGradient id="light-beam" gradientUnits="userSpaceOnUse" x1="${f1(mouth[0])}" y1="${f1(mouth[1])}" x2="${f1(far[0])}" y2="${f1(far[1])}">
+<stop offset="0" stop-color="#FFECC4" stop-opacity="0.22"></stop><stop offset="0.5" stop-color="#FFECC4" stop-opacity="0.07"></stop><stop offset="1" stop-color="#FFECC4" stop-opacity="0"></stop>
+</linearGradient>
+<filter id="light-soft" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="26"></feGaussianBlur></filter>
+</defs>
+<rect x="${-L.w}" y="${-L.h}" width="${L.w * 3}" height="${L.h * 3}" fill="url(#light-dark)"></rect>
+<rect x="${-L.w}" y="${-L.h}" width="${L.w * 3}" height="${L.h * 3}" fill="url(#light-pool)"></rect>
+<g transform="${lampAt}"><polygon points="${beam}" fill="url(#light-beam)" filter="url(#light-soft)"></polygon></g>
 </svg>
 ${open('layer-lamp')}
-<g class="chalk boil"><g transform="${plane}"><g id="obj-lamp" transform="${place(['lamp', ...L.lamp])}">${O.lamp()}</g></g></g>
+<g class="chalk boil"><g id="obj-lamp" transform="${lampAt}">${O.lamp()}</g></g>
 </svg>`;
 
   for (const g of document.querySelectorAll('.chalk')) g.setAttribute('filter', 'url(#ck1)');
@@ -124,7 +149,6 @@ function setLight(mode) {
     stage.classList.add('just-lit');
     setTimeout(() => stage.classList.remove('just-lit'), 1200);
   }
-  setTimeout(() => sfx.click(), 120);   // 第一次點擊時聲音還在啟動，稍等一下才出得了聲
   if (mode === 'player') { state.nowLine = -2; markPlayer(true); }
 }
 

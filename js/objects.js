@@ -371,17 +371,28 @@ export function headphones(phi) {
 </g>`;
 }
 
-/** 檯燈：從桌子右上角伸進來，燈罩朝著桌面。整個是一個可以點的開關 */
+/**
+ * 檯燈：立在桌上，底座、兩節燈臂、朝著桌面的燈罩。整盞燈是一個可以點的開關。
+ * 它是站起來的東西，直接用螢幕上的樣子畫（原點在底座中心），不經過桌面的壓扁。
+ */
+export const LAMP = { mouth: [-107.2, -118.4], dir: [-0.6, 0.8], across: [0.8, 0.6], half: 50 };
+
 export function lamp() {
   return `<g class="btn" data-act="lamp" role="button" tabindex="0" aria-label="檯燈">
-<circle class="hit" cx="-45" cy="45" r="105"></circle>
-<path class="to" stroke-width="9" d="M170,-170 L18,-14"></path>
-<path class="ti" stroke-width="6.7" d="M170,-170 L18,-14"></path>
-<circle class="s" cx="0" cy="0" r="22"></circle>
-<polygon class="s" points="14.6,16.5 -28.9,108.4 -111.1,15.6 -14.6,-16.5"></polygon>
-<ellipse class="s ring" cx="-70" cy="62" rx="62" ry="30" transform="rotate(48.5 -70 62)"></ellipse>
-<circle class="l" cx="-66" cy="58" r="13"></circle>
-<path class="f rays" d="M-104,96 l-22,20 M-84,112 l-14,27 M-122,74 l-28,10 M-58,118 l-4,30 M-134,48 l-30,-2"></path>
+<rect class="hit" x="-165" y="-200" width="225" height="245"></rect>
+<ellipse class="s" cx="0" cy="0" rx="46" ry="37"></ellipse>
+<path class="l" d="M-46,0 v-7 M46,0 v-7"></path>
+<ellipse class="s" cx="0" cy="-7" rx="46" ry="37"></ellipse>
+<ellipse class="f" cx="0" cy="-7" rx="14" ry="11"></ellipse>
+<path class="to" stroke-width="8" d="M0,-9 L34,-120"></path>
+<path class="ti" stroke-width="5.7" d="M0,-9 L34,-120"></path>
+<path class="to" stroke-width="8" d="M34,-120 L-70,-168"></path>
+<path class="ti" stroke-width="5.7" d="M34,-120 L-70,-168"></path>
+<circle class="s" cx="34" cy="-120" r="7"></circle>
+<circle class="s" cx="-70" cy="-168" r="16"></circle>
+<polygon class="s" points="-57.2,-158.4 -67.2,-88.4 -147.2,-148.4 -82.8,-177.6"></polygon>
+<ellipse class="s ring mouth" cx="-107.2" cy="-118.4" rx="50" ry="26" transform="rotate(36.87 -107.2 -118.4)"></ellipse>
+<circle class="l" cx="-104" cy="-122" r="11"></circle>
 </g>`;
 }
 
