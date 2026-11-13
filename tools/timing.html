@@ -55,16 +55,18 @@
   <span><kbd>⌫</kbd> 撤销并退回 3 秒</span>
   <span><kbd>←</kbd><kbd>→</kbd> 退 / 进 3 秒</span>
   <span><kbd>[</kbd><kbd>]</kbd> 选中的那句提前 / 推后 0.1 秒</span>
+  <span><kbd>T</kbd> 把选中的那句改成现在这一刻</span>
   <span>点某一句：选中它并跳到它的时间</span>
 </div>
 
+<div id="saved" style="color: var(--hot); font-size: 14px; margin-bottom: 6px"></div>
 <div id="status"></div>
 <ol id="lines"></ol>
 
 <div class="bar">
   <button id="download" class="primary" type="button">下载 .lrc</button>
   <button id="copy" type="button">复制</button>
-  <span id="saved" style="color: var(--dim); font-size: 14px"></span>
+  <span id="done" style="color: var(--dim); font-size: 14px"></span>
 </div>
 <textarea id="out" readonly aria-label="导出的 LRC"></textarea>
 </main>
@@ -140,6 +142,14 @@ function nudge(d) {
   render();
 }
 
+/** 把选中的那一句改成"现在正在播的这一刻" */
+function retime() {
+  if (sel < 0) return;
+  lines[sel].t = Math.max(0, Math.round(audio.currentTime * 100) / 100);
+  save();
+  render();
+}
+
 async function load(id) {
   song = songs.find((s) => s.id === id);
   audio.src = '../' + song.audio;
@@ -150,9 +160,21 @@ async function load(id) {
     texts = raw.split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
   }
   try { times = JSON.parse(localStorage.getItem(storeKey()) || '[]'); } catch (e) { times = []; }
+  let note = times.some((t) => typeof t === 'number') ? '已恢复你上次改到一半的进度' : '';
+  // 没有自己打过的进度时，载入现有的 .lrc（比如自动对齐的初稿）来校对
+  if (!note && song.lyrics) {
+    try {
+      const raw = await (await fetch('../' + song.lyrics, { cache: 'no-store' })).text();
+      const rows = raw.split(/\r?\n/).map((r) => r.match(/^\[(\d+):(\d+(?:\.\d+)?)\]/)).filter(Boolean);
+      if (!/^佔位/.test(raw) && rows.length === texts.length) {
+        times = rows.map((m) => Number(m[1]) * 60 + Number(m[2]));
+        note = '已载入现有的时间轴。播放时看高亮的那一句是不是正在唱的；不对就点它，再微调';
+      }
+    } catch (e) { /* 没有就从头打 */ }
+  }
   lines = texts.map((text, i) => ({ text, t: typeof times[i] === 'number' ? times[i] : null }));
   sel = -1;
-  $('#saved').textContent = lines.some((l) => l.t != null) ? '已恢复上次打到一半的进度' : '';
+  $('#saved').textContent = note;
   if (!texts.length) $('#status').textContent = '这首歌还没有歌词文本（songs.json 里的 lyricsText）';
   render();
 }
@@ -166,14 +188,14 @@ $('#reset').onclick = () => {
   sel = -1; save(); render();
 };
 $('#song').onchange = (e) => load(e.target.value);
-$('#copy').onclick = async () => { await navigator.clipboard.writeText(toLrc()); $('#saved').textContent = '已复制'; };
+$('#copy').onclick = async () => { await navigator.clipboard.writeText(toLrc()); $('#done').textContent = '已复制'; };
 $('#download').onclick = () => {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([toLrc()], { type: 'text/plain;charset=utf-8' }));
   a.download = song.id + '.lrc';
   a.click();
   URL.revokeObjectURL(a.href);
-  $('#saved').textContent = '已下载 ' + song.id + '.lrc，放进 lyrics 文件夹替换原来的即可';
+  $('#done').textContent = '已下载 ' + song.id + '.lrc，放进 lyrics 文件夹替换原来的即可';
 };
 list.onclick = (e) => {
   const li = e.target.closest('li');
@@ -196,6 +218,7 @@ document.addEventListener('keydown', (e) => {
   else if (e.key === 'ArrowRight') { e.preventDefault(); audio.currentTime += 3; }
   else if (e.key === '[') nudge(-0.1);
   else if (e.key === ']') nudge(0.1);
+  else if (e.key === 't' || e.key === 'T') retime();
 });
 
 (async () => {
