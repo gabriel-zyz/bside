@@ -39,8 +39,11 @@ const place = ([, x, y, phi, s]) => `translate(${x} ${y}) rotate(${phi})${s !== 
 
 /* ---------- 粉筆線條的濾鏡 ---------- */
 
+// 線條先抖動，再用雜點把筆畫磨出粉筆的顆粒。
+// 顆粒只能磨在筆畫上：物件本身要保持不透明，否則壓在下面的東西會從顆粒的縫隙裡透出來。
+// 所以最後在底下墊一層和物件同形狀的底色。
 function chalkFilters(wobble) {
-  const one = (id, s1, s2) => `<filter id="${id}" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence type="fractalNoise" baseFrequency="0.03" numOctaves="2" seed="${s1}" result="n"></feTurbulence><feDisplacementMap in="SourceGraphic" in2="n" scale="${wobble}" xChannelSelector="R" yChannelSelector="G" result="d"></feDisplacementMap><feTurbulence type="fractalNoise" baseFrequency="1.1" numOctaves="1" seed="${s2}" result="gr"></feTurbulence><feColorMatrix in="gr" type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  3.4 0 0 0 -0.6" result="ga"></feColorMatrix><feComposite in="d" in2="ga" operator="in"></feComposite></filter>`;
+  const one = (id, s1, s2) => `<filter id="${id}" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence type="fractalNoise" baseFrequency="0.03" numOctaves="2" seed="${s1}" result="n"></feTurbulence><feDisplacementMap in="SourceGraphic" in2="n" scale="${wobble}" xChannelSelector="R" yChannelSelector="G" result="d"></feDisplacementMap><feTurbulence type="fractalNoise" baseFrequency="1.1" numOctaves="1" seed="${s2}" result="gr"></feTurbulence><feColorMatrix in="gr" type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  3.4 0 0 0 -0.6" result="ga"></feColorMatrix><feComposite in="d" in2="ga" operator="in" result="grainy"></feComposite><feFlood flood-color="#0B0C0B" result="bg"></feFlood><feComposite in="bg" in2="d" operator="in" result="solid"></feComposite><feMerge><feMergeNode in="solid"></feMergeNode><feMergeNode in="grainy"></feMergeNode></feMerge></filter>`;
   return one('ck1', 4, 2) + one('ck2', 19, 7) + one('ck3', 33, 12);
 }
 
