@@ -1,11 +1,11 @@
-"""把一首歌的歌词自动对到音频上，生成 .lrc 初稿。
+"""把一首歌的歌词自动对到音频上，把时间写回这首歌的歌词文件。
 
 用法（在 web-app 目录下）：
-    .venv/bin/python tools/align.py <歌的 id> [模型名，默认 turbo]
+    .venv/bin/python tools/align.py <歌的 id> [--force] [--model turbo]
 
-读 songs.json 里这首歌的 audio 和 lyricsText，写出：
-    lyrics/<id>.lrc          每一行歌词的开始时间
-    lyrics/<id>.align.json   每一行的起止时间，检查用（不随网页发布）
+读 songs.json 里这首歌的 audio 和 lyrics。歌词文件一行一句，
+对完之后每一行前面会加上 [分:秒]；文件开头的 # 说明原样保留。
+如果文件里已经有时间，要加 --force 才会覆盖（免得冲掉手工校对过的结果）。
 
 对齐结果只是初稿，要用 tools/timing.html 听一遍校对。
 
@@ -15,14 +15,38 @@
 """
 
 import json
+import re
 import sys
 from pathlib import Path
 
-import numpy as np
-import stable_whisper
-import whisper.timing
-
 ROOT = Path(__file__).resolve().parent.parent
+TIMED = re.compile(r"^\[(\d+):(\d+(?:\.\d+)?)\]\s*(.*)$")
+
+
+def fmt(t):
+    m = int(t // 60)
+    return f"{m:02d}:{t - m * 60:05.2f}"
+
+
+def read_lyrics(path):
+    """回传 (开头的说明行, 歌词行, 是否已经有时间)"""
+    header, lines, timed = [], [], False
+    for raw in path.read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        if line.startswith("#"):
+            if not lines:
+                header.append(raw)
+            continue
+        if not line:
+            continue
+        m = TIMED.match(line)
+        if m:
+            timed = True
+            if m.group(3):
+                lines.append(m.group(3))
+        else:
+            lines.append(line)
+    return header, lines, timed
 
 
 def dtw_plain(x):
@@ -30,6 +54,8 @@ def dtw_plain(x):
 
     这台机器上 numba 编译出来的版本会直接崩溃（segfault），所以换成普通 Python。
     """
+    import numpy as np
+
     rows = x.tolist()
     n, m = len(rows), len(rows[0])
     inf = float("inf")
@@ -66,48 +92,46 @@ def dtw_plain(x):
     return np.array(path[::-1]).T
 
 
-whisper.timing.dtw_cpu = dtw_plain
-
-
-def fmt(t):
-    m = int(t // 60)
-    return f"{m:02d}:{t - m * 60:05.2f}"
-
-
 def main():
-    if len(sys.argv) < 2:
+    args = [a for a in sys.argv[1:] if not a.startswith("--")]
+    force = "--force" in sys.argv
+    model_name = sys.argv[sys.argv.index("--model") + 1] if "--model" in sys.argv else "turbo"
+    if "--model" in sys.argv:
+        args = [a for a in args if a != model_name]
+    if not args:
         sys.exit(__doc__)
-    song_id = sys.argv[1]
-    model_name = sys.argv[2] if len(sys.argv) > 2 else "turbo"
+    song_id = args[0]
 
     songs = json.loads((ROOT / "songs.json").read_text(encoding="utf-8"))["songs"]
     song = next((s for s in songs if s["id"] == song_id), None)
-    if not song or not song.get("lyricsText"):
-        sys.exit(f"songs.json 里找不到 {song_id}，或者它没有 lyricsText")
+    if not song or not song.get("lyrics"):
+        sys.exit(f"songs.json 里找不到 {song_id}，或者它没有 lyrics")
 
-    lines = [l.strip() for l in (ROOT / song["lyricsText"]).read_text(encoding="utf-8").splitlines() if l.strip()]
-    audio = str(ROOT / song["audio"])
+    path = ROOT / song["lyrics"]
+    header, lines, timed = read_lyrics(path)
+    if not lines:
+        sys.exit(f"{song['lyrics']} 里没有歌词")
+    if timed and not force:
+        sys.exit(f"{song['lyrics']} 里已经有时间了。要重新对齐并覆盖，请加 --force")
 
+    import stable_whisper
+    import whisper.timing
+
+    whisper.timing.dtw_cpu = dtw_plain
     model = stable_whisper.load_model(model_name, device="cpu")
-    result = model.align(audio, "\n".join(lines), language="zh", original_split=True)
+    result = model.align(str(ROOT / song["audio"]), "\n".join(lines), language="zh", original_split=True)
 
     segs = result.segments
     if len(segs) != len(lines):
-        print(f"注意：歌词有 {len(lines)} 行，对齐结果有 {len(segs)} 段，按顺序尽量对应", file=sys.stderr)
+        print(f"注意：歌词有 {len(lines)} 行，对齐结果有 {len(segs)} 段，对不上的行不写时间", file=sys.stderr)
 
-    rows = []
+    out = []
     for i, line in enumerate(lines):
-        if i < len(segs):
-            rows.append({"n": i + 1, "start": round(segs[i].start, 2), "end": round(segs[i].end, 2), "text": line, "heard": segs[i].text.strip()})
-        else:
-            rows.append({"n": i + 1, "start": None, "end": None, "text": line, "heard": ""})
+        out.append(f"[{fmt(segs[i].start)}] {line}" if i < len(segs) else line)
+        print(out[-1])
 
-    out = ROOT / "lyrics" / f"{song_id}.lrc"
-    out.write_text("".join(f"[{fmt(r['start'])}]{r['text']}\n" for r in rows if r["start"] is not None), encoding="utf-8")
-    (ROOT / "lyrics" / f"{song_id}.align.json").write_text(json.dumps({"model": model_name, "lines": rows}, ensure_ascii=False, indent=1), encoding="utf-8")
-
-    for r in rows:
-        print(f"{r['n']:>2}  {fmt(r['start']) if r['start'] is not None else '--:--.--'}  {fmt(r['end']) if r['end'] is not None else '--:--.--'}  {r['text']}")
+    head = "\n".join(header) + "\n\n" if header else ""
+    path.write_text(head + "\n".join(out) + "\n", encoding="utf-8")
 
 
 if __name__ == "__main__":

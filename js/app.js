@@ -4,7 +4,7 @@ import { K, pageEdge, f1 } from './projection.js';
 import * as O from './objects.js';
 import { LAYOUTS, pickLayout } from './layout.js';
 import * as sfx from './sfx.js';
-import { parseLrc, spreadOf, slotOf, rangeOf, activeAt } from './lyrics.js';
+import { parseLyrics, spreadOf, slotOf, rangeOf, activeAt } from './lyrics.js';
 
 const $ = (sel) => document.querySelector(sel);
 const stage = $('#stage');
@@ -405,7 +405,7 @@ async function loadLyrics(song, token) {
   try {
     const res = await fetch(song.lyrics);
     if (!res.ok) return;
-    const lines = parseLrc(await res.text());
+    const lines = parseLyrics(await res.text());
     if (token !== state.token) return;
     state.lyrics = lines;
     renderSpread(0);

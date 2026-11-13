@@ -53,6 +53,28 @@ class RangeHandler(SimpleHTTPRequestHandler):
             outputfile.write(chunk)
             remaining -= len(chunk)
 
+    def do_PUT(self):
+        """校对工具（tools/timing.html）保存歌词用。
+
+        只接受本机发来的请求，只能写 lyrics/ 下的 .txt，别的一律拒绝。
+        """
+        path = self.path.split('?')[0]
+        local = self.client_address[0] in ('127.0.0.1', '::1', '::ffff:127.0.0.1')
+        size = int(self.headers.get('Content-Length') or 0)
+        if not local or not re.fullmatch(r'/lyrics/[A-Za-z0-9_-]+\.txt', path) or size > 200_000:
+            self.send_error(403, 'Forbidden')
+            return
+        body = self.rfile.read(size)
+        try:
+            body.decode('utf-8')
+        except UnicodeDecodeError:
+            self.send_error(400, 'Not UTF-8')
+            return
+        with open(os.path.join(os.getcwd(), path.lstrip('/')), 'wb') as f:
+            f.write(body)
+        self.send_response(204)
+        self.end_headers()
+
     def end_headers(self):
         self.send_header('Accept-Ranges', 'bytes')
         self.send_header('Cache-Control', 'no-store')

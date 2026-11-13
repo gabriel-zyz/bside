@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>打时间点</title>
+<title>歌词时间校对</title>
 <link rel="icon" href="data:,">
 <style>
   :root { --bg: #0B0C0B; --ink: #EDE6D3; --dim: #8d887b; --line: #33322e; --hot: #F6DCA6; }
@@ -12,6 +12,7 @@
   main { max-width: 860px; margin: 0 auto; padding: 24px 16px 80px; }
   h1 { font-size: 20px; margin: 0 0 4px; font-weight: 600; }
   p { margin: 0 0 12px; color: var(--dim); }
+  code { font: 14px ui-monospace, Menlo, monospace; color: var(--ink); }
   .bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 16px 0; }
   select, button { font: inherit; color: var(--ink); background: none; border: 1px solid var(--line); border-radius: 6px; padding: 8px 12px; min-height: 40px; }
   button { cursor: pointer; }
@@ -29,46 +30,44 @@
   li.next .x { color: var(--hot); }
   li.playing .x { font-weight: 600; }
   li.sel { outline: 1px solid var(--hot); outline-offset: -1px; }
+  #note { color: var(--hot); font-size: 14px; min-height: 21px; margin-bottom: 6px; }
   #status { color: var(--dim); font-size: 14px; }
-  textarea { width: 100%; height: 160px; margin-top: 12px; background: #111210; color: var(--ink); border: 1px solid var(--line); border-radius: 6px; padding: 10px; font: 13px/1.5 ui-monospace, Menlo, monospace; }
 </style>
 </head>
 <body>
 <main>
-<h1>打时间点</h1>
-<p>放歌，每唱到一句的开头就按一下空格。打完导出，把文件存成这首歌的 .lrc。</p>
+<h1>歌词时间校对</h1>
+<p>每首歌的歌词只有一个文件（<code id="path"></code>），字和时间都在里面。改字、拆行、并行请用文本编辑器直接改那个文件；这里只负责时间。</p>
 
 <div class="bar">
   <label for="song">歌：</label>
   <select id="song"></select>
   <button id="play" class="primary" type="button">播放 / 暂停</button>
   <button id="stamp" type="button">打点（空格）</button>
-  <button id="undo" type="button">撤销上一个</button>
-  <button id="reset" type="button">全部清空</button>
+  <button id="reload" type="button">重新读取文件</button>
 </div>
 
 <audio id="audio" controls preload="auto"></audio>
 
 <div class="keys">
-  <span><kbd>空格</kbd> 给下一句打点</span>
+  <span><kbd>空格</kbd> 给下一句没有时间的打点</span>
   <span><kbd>Enter</kbd> 播放 / 暂停</span>
-  <span><kbd>⌫</kbd> 撤销并退回 3 秒</span>
-  <span><kbd>←</kbd><kbd>→</kbd> 退 / 进 3 秒</span>
-  <span><kbd>[</kbd><kbd>]</kbd> 选中的那句提前 / 推后 0.1 秒</span>
   <span><kbd>T</kbd> 把选中的那句改成现在这一刻</span>
+  <span><kbd>[</kbd><kbd>]</kbd> 选中的那句提前 / 推后 0.1 秒</span>
+  <span><kbd>⌫</kbd> 清掉选中那句的时间</span>
+  <span><kbd>←</kbd><kbd>→</kbd> 退 / 进 3 秒</span>
   <span>点某一句：选中它并跳到它的时间</span>
 </div>
 
-<div id="saved" style="color: var(--hot); font-size: 14px; margin-bottom: 6px"></div>
+<div id="note"></div>
 <div id="status"></div>
 <ol id="lines"></ol>
 
 <div class="bar">
-  <button id="download" class="primary" type="button">下载 .lrc</button>
-  <button id="copy" type="button">复制</button>
+  <button id="save" class="primary" type="button">保存到文件</button>
+  <button id="download" type="button">下载</button>
   <span id="done" style="color: var(--dim); font-size: 14px"></span>
 </div>
-<textarea id="out" readonly aria-label="导出的 LRC"></textarea>
 </main>
 
 <script>
@@ -77,8 +76,10 @@ const audio = $('#audio');
 const list = $('#lines');
 let songs = [];
 let song = null;
-let lines = [];      // [{ text, t }]，t 为 null 表示还没打点
+let header = [];     // 文件开头的 # 说明行，保存时原样写回
+let lines = [];      // [{ text, t }]，t 为 null 表示还没有时间
 let sel = -1;
+let dirty = false;
 
 const fmt = (t) => {
   if (t == null) return '--:--.--';
@@ -86,16 +87,29 @@ const fmt = (t) => {
   const s = (t - m * 60).toFixed(2).padStart(5, '0');
   return String(m).padStart(2, '0') + ':' + s;
 };
+const round = (t) => Math.max(0, Math.round(t * 100) / 100);
 const nextIndex = () => lines.findIndex((l) => l.t == null);
-const storeKey = () => 'timing:' + song.id;
 
-function toLrc() {
-  return lines.filter((l) => l.t != null).map((l) => `[${fmt(l.t)}]${l.text}`).join('\n') + '\n';
+function parse(raw) {
+  header = [];
+  const out = [];
+  for (const r of raw.split(/\r?\n/)) {
+    const line = r.trim();
+    if (line.startsWith('#')) { if (!out.length) header.push(r); continue; }
+    if (!line) continue;
+    const m = line.match(/^\[(\d+):(\d+(?:\.\d+)?)\]\s*(.*)$/);
+    if (m) { if (m[3]) out.push({ text: m[3], t: Number(m[1]) * 60 + Number(m[2]) }); }
+    else out.push({ text: line, t: null });
+  }
+  return out;
 }
 
-function save() {
-  try { localStorage.setItem(storeKey(), JSON.stringify(lines.map((l) => l.t))); } catch (e) { /* 存不了就算了 */ }
+function serialize() {
+  const head = header.length ? header.join('\n') + '\n\n' : '';
+  return head + lines.map((l) => (l.t == null ? l.text : `[${fmt(l.t)}] ${l.text}`)).join('\n') + '\n';
 }
+
+function touch() { dirty = true; $('#done').textContent = '有改动还没保存'; }
 
 function render() {
   const next = nextIndex();
@@ -108,94 +122,85 @@ function render() {
   }).join('');
   list.querySelectorAll('li').forEach((li, i) => { li.querySelector('.x').textContent = lines[i].text; });
   const done = lines.filter((l) => l.t != null).length;
-  $('#status').textContent = `已打 ${done} / ${lines.length} 句` + (next >= 0 ? `，下一句：第 ${next + 1} 句` : '，全部打完了');
-  $('#out').value = toLrc();
-  const focus = list.querySelector('li.next') || list.querySelector('li.playing');
+  const order = lines.filter((l) => l.t != null).some((l, i, a) => i > 0 && l.t < a[i - 1].t);
+  $('#status').textContent = `${lines.length} 句，${done} 句有时间` + (next >= 0 ? `，下一句要打点的是第 ${next + 1} 句` : '')
+    + (order ? '。注意：有的句子时间比上一句还早' : '');
+  const focus = list.querySelector('li.playing') || list.querySelector('li.next');
   if (focus && !audio.paused) focus.scrollIntoView({ block: 'center' });
 }
 
 function stamp() {
   const i = nextIndex();
   if (i < 0) return;
-  lines[i].t = Math.max(0, Math.round(audio.currentTime * 100) / 100);
+  lines[i].t = round(audio.currentTime);
   sel = i;
-  save();
-  render();
+  touch(); render();
 }
 
-function undo() {
-  let i = -1;
-  lines.forEach((l, k) => { if (l.t != null) i = k; });
-  if (i < 0) return;
-  lines[i].t = null;
-  sel = -1;
-  audio.currentTime = Math.max(0, audio.currentTime - 3);
-  save();
-  render();
+function retime() {
+  if (sel < 0) return;
+  lines[sel].t = round(audio.currentTime);
+  touch(); render();
 }
 
 function nudge(d) {
   if (sel < 0 || lines[sel].t == null) return;
-  lines[sel].t = Math.max(0, Math.round((lines[sel].t + d) * 100) / 100);
+  lines[sel].t = round(lines[sel].t + d);
   audio.currentTime = lines[sel].t;
-  save();
-  render();
+  touch(); render();
 }
 
-/** 把选中的那一句改成"现在正在播的这一刻" */
-function retime() {
-  if (sel < 0) return;
-  lines[sel].t = Math.max(0, Math.round(audio.currentTime * 100) / 100);
-  save();
-  render();
+function clearSel() {
+  if (sel < 0 || lines[sel].t == null) return;
+  lines[sel].t = null;
+  touch(); render();
 }
 
 async function load(id) {
+  if (dirty && !confirm('有改动还没保存，确定丢掉？')) { $('#song').value = song.id; return; }
   song = songs.find((s) => s.id === id);
-  audio.src = '../' + song.audio;
-  let texts = [];
-  let times = [];
-  if (song.lyricsText) {
-    const raw = await (await fetch('../' + song.lyricsText)).text();
-    texts = raw.split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
-  }
-  try { times = JSON.parse(localStorage.getItem(storeKey()) || '[]'); } catch (e) { times = []; }
-  let note = times.some((t) => typeof t === 'number') ? '已恢复你上次改到一半的进度' : '';
-  // 没有自己打过的进度时，载入现有的 .lrc（比如自动对齐的初稿）来校对
-  if (!note && song.lyrics) {
+  $('#path').textContent = song.lyrics || '（这首歌在 songs.json 里还没有 lyrics）';
+  if (audio.src.split('/').pop() !== song.audio.split('/').pop()) audio.src = '../' + song.audio;
+  lines = [];
+  if (song.lyrics) {
     try {
-      const raw = await (await fetch('../' + song.lyrics, { cache: 'no-store' })).text();
-      const rows = raw.split(/\r?\n/).map((r) => r.match(/^\[(\d+):(\d+(?:\.\d+)?)\]/)).filter(Boolean);
-      if (!/^佔位/.test(raw) && rows.length === texts.length) {
-        times = rows.map((m) => Number(m[1]) * 60 + Number(m[2]));
-        note = '已载入现有的时间轴。播放时看高亮的那一句是不是正在唱的；不对就点它，再微调';
-      }
-    } catch (e) { /* 没有就从头打 */ }
+      const res = await fetch('../' + song.lyrics, { cache: 'no-store' });
+      if (res.ok) lines = parse(await res.text());
+    } catch (e) { /* 读不到就当作空的 */ }
   }
-  lines = texts.map((text, i) => ({ text, t: typeof times[i] === 'number' ? times[i] : null }));
   sel = -1;
-  $('#saved').textContent = note;
-  if (!texts.length) $('#status').textContent = '这首歌还没有歌词文本（songs.json 里的 lyricsText）';
+  dirty = false;
+  $('#done').textContent = '';
+  const missing = lines.filter((l) => l.t == null).length;
+  $('#note').textContent = !lines.length ? '这首歌还没有歌词。先把歌词一行一句写进上面那个文件。'
+    : missing ? `有 ${missing} 句还没有时间。放歌，唱到那一句的开头时按空格。`
+    : '每一句都有时间了。播放时看加粗的那一句是不是正在唱的；不对就点它，再按 T 或 [ ] 调整。';
   render();
+}
+
+async function save() {
+  if (!song.lyrics) return;
+  try {
+    const res = await fetch('../' + song.lyrics, { method: 'PUT', body: serialize(), headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+    if (!res.ok) throw new Error(String(res.status));
+    dirty = false;
+    $('#done').textContent = '已保存到 ' + song.lyrics + '，刷新网页就能看到';
+  } catch (e) {
+    $('#done').textContent = '这里没法直接保存（需要用 dev-server.py 在本机打开）。请点"下载"，再替换原文件。';
+  }
 }
 
 $('#play').onclick = () => { if (audio.paused) audio.play(); else audio.pause(); };
 $('#stamp').onclick = stamp;
-$('#undo').onclick = undo;
-$('#reset').onclick = () => {
-  if (!confirm('清空这首歌已经打好的所有时间点？')) return;
-  lines.forEach((l) => { l.t = null; });
-  sel = -1; save(); render();
-};
+$('#reload').onclick = () => load(song.id);
+$('#save').onclick = save;
 $('#song').onchange = (e) => load(e.target.value);
-$('#copy').onclick = async () => { await navigator.clipboard.writeText(toLrc()); $('#done').textContent = '已复制'; };
 $('#download').onclick = () => {
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([toLrc()], { type: 'text/plain;charset=utf-8' }));
-  a.download = song.id + '.lrc';
+  a.href = URL.createObjectURL(new Blob([serialize()], { type: 'text/plain;charset=utf-8' }));
+  a.download = song.lyrics.split('/').pop();
   a.click();
   URL.revokeObjectURL(a.href);
-  $('#done').textContent = '已下载 ' + song.id + '.lrc，放进 lyrics 文件夹替换原来的即可';
 };
 list.onclick = (e) => {
   const li = e.target.closest('li');
@@ -206,14 +211,15 @@ list.onclick = (e) => {
 };
 audio.addEventListener('timeupdate', render);
 // 按钮和播放条不留焦点，否则空格会同时触发它们自己的动作
-document.addEventListener('click', (e) => { if (e.target.closest('button')) e.target.closest('button').blur(); });
+document.addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) b.blur(); });
 audio.addEventListener('focus', () => audio.blur());
+window.addEventListener('beforeunload', (e) => { if (dirty) { e.preventDefault(); e.returnValue = ''; } });
 
 document.addEventListener('keydown', (e) => {
-  if (e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') return;
+  if (e.target.tagName === 'SELECT') return;
   if (e.key === ' ') { e.preventDefault(); stamp(); }
   else if (e.key === 'Enter') { e.preventDefault(); $('#play').onclick(); }
-  else if (e.key === 'Backspace') { e.preventDefault(); undo(); }
+  else if (e.key === 'Backspace') { e.preventDefault(); clearSel(); }
   else if (e.key === 'ArrowLeft') { e.preventDefault(); audio.currentTime = Math.max(0, audio.currentTime - 3); }
   else if (e.key === 'ArrowRight') { e.preventDefault(); audio.currentTime += 3; }
   else if (e.key === '[') nudge(-0.1);
@@ -222,7 +228,7 @@ document.addEventListener('keydown', (e) => {
 });
 
 (async () => {
-  const data = await (await fetch('../songs.json')).json();
+  const data = await (await fetch('../songs.json', { cache: 'no-store' })).json();
   songs = data.songs.filter((s) => !s.dev);
   $('#song').innerHTML = songs.map((s) => `<option value="${s.id}"></option>`).join('');
   [...$('#song').options].forEach((o, i) => { o.textContent = songs[i].title; });
