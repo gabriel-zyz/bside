@@ -421,7 +421,12 @@ function renderSpread(spread) {
   if (song && spread === 0) {
     const size = Math.min(26, 205 / Math.max(O.textW(song.title), 1));
     out += `<text class="tx" x="24" y="38" font-size="${f1(size)}">${O.esc(song.title)}</text>`;
-    if (song.date) out += `<text class="tx" x="26" y="70" font-size="15" letter-spacing="1" opacity=".45">${song.date.replace(/-/g, '．')}</text>`;
+    // 歌名下面寫署名（詞曲、重製）。每首歌預設用 songs.json 最上面的 credits，個別歌可以自己另寫
+    const credits = song.credits || state.credits;
+    if (credits) {
+      const small = Math.min(15, 198 / Math.max(O.textW(credits), 1));
+      out += `<text class="tx" x="26" y="70" font-size="${f1(small)}" opacity=".55">${O.esc(credits)}</text>`;
+    }
   }
   const [from, to] = rangeOf(spread, state.lyrics.length);
   for (let k = from; k < to; k++) {
@@ -721,6 +726,7 @@ async function init() {
   const dev = new URLSearchParams(location.search).has('dev');
   const data = await (await fetch('songs.json')).json();
   state.songs = data.songs.filter((s) => dev || !s.dev);
+  state.credits = data.credits || '';
   state.layout = pickLayout();
   bind();
   build();
