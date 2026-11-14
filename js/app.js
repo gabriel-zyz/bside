@@ -31,6 +31,7 @@ const state = {
   nowLine: -2,       // 播放器裡目前標亮的是第幾句
   swallow: 0,        // 這個時間點之前的 click 不處理（同一下點擊已經用掉了）
   credits: '',
+  site: {},          // 網站的名字和署名
 };
 
 const cur = () => (state.current == null ? null : state.songs[state.current]);
@@ -523,7 +524,8 @@ function onTime() {
 
 function setMediaSession(song) {
   if (!('mediaSession' in navigator) || !window.MediaMetadata) return;
-  navigator.mediaSession.metadata = new MediaMetadata({ title: song.title });
+  // 手機鎖屏上顯示的：歌名、署名、作品集的名字
+  navigator.mediaSession.metadata = new MediaMetadata({ title: song.title, artist: state.site.artist || '', album: state.site.title || '' });
 }
 
 /* ---------- 時鐘 ---------- */
@@ -903,6 +905,8 @@ async function init() {
   const data = await (await fetch('songs.json')).json();
   state.songs = data.songs.filter((s) => dev || !s.dev);
   state.credits = data.credits || '';
+  state.site = data.site || {};
+  if (state.site.title) document.title = state.site.title;
   state.layout = pickLayout();
   bind();
   buildPlayer();
