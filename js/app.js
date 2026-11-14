@@ -30,7 +30,7 @@ const state = {
   flipping: false,
   light: 'off',      // 'off' 還沒開燈；'on' 桌面；'player' 關了燈，只剩播放器
   nowLine: -2,       // 播放器裡目前標亮的是第幾句
-  swallow: 0,        // 這個時間點之前的 click 不處理（同一下點擊已經用掉了）
+  down: null,        // 這一下是按在什麼上面開始的：{ act, notebook, light, browse }；click 要對得上才算數
   credits: '',
   site: {},          // 網站的名字和署名
 };
@@ -725,6 +725,15 @@ function onDown(e) {
   sfx.unlock();
   if (e.button > 0) return;
   const svg = stage;
+  // 記下這一下按在哪裡。畫面可能在手指抬起來的時候就變了（收起盒子、換成播放器），
+  // 隨後的 click 會落在新出現的東西上；按下去時不在那上面，就不算點了它。
+  const actEl = e.target.closest('[data-act]');
+  state.down = {
+    act: actEl ? actEl.dataset.act : null,
+    notebook: Boolean(e.target.closest('#obj-notebook')),
+    light: state.light,
+    browse: Boolean(state.browse),
+  };
   if (state.light === 'off') return;      // 還沒開燈：只有點檯燈有用（在 onClick 裡處理）
   touchHint();
   if (e.target.closest('[data-act]')) return;
@@ -797,8 +806,6 @@ function onUp(e) {
 
   if (state.layout === 'mobile') {
     if (state.browse) {
-      // 這一下已經用來挑歌或收起盒子：盒子一收，手指底下就換成筆記本，別讓同一下又算成點筆記本
-      state.swallow = performance.now() + 400;
       const list = inBox();
       if (p.rec != null && p.rec === list[state.browse.pos]) {
         const from = p.rec;
@@ -887,10 +894,19 @@ function press(act) {
 }
 
 function onClick(e) {
-  if (performance.now() < state.swallow) return;
+  const down = state.down;
+  state.down = null;
+  // 手指或滑鼠點出來的 click，要和按下去的地方對得上（見 onDown）；
+  // 鍵盤、輔助工具發出的 click 沒有按下去這一步，照常處理。
+  const pointer = e.detail > 0;
+  if (pointer && !down) return;
   const el = e.target.closest('[data-act]');
   if (state.light === 'off' && !(el && el.dataset.act === 'lamp')) return;
-  if (el) { press(el.dataset.act); return; }
+  if (el) {
+    if (!pointer || down.act === el.dataset.act) press(el.dataset.act);
+    return;
+  }
+  if (pointer && (down.light !== state.light || down.browse)) return;
   if (state.light === 'player') {
     // 點某一句歌詞：跳到那一句
     const line = e.target.closest('.pl');
@@ -901,7 +917,7 @@ function onClick(e) {
     return;
   }
   // 點筆記本：正在聽歌的話，關燈變成播放器
-  if (state.light === 'on' && !state.browse && state.current != null && e.target.closest('#obj-notebook')) setLight('player');
+  if (state.light === 'on' && !state.browse && state.current != null && e.target.closest('#obj-notebook') && (!pointer || down.notebook)) setLight('player');
 }
 
 function onKey(e) {
