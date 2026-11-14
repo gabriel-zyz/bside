@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>欢迎画面特效演示</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="../css/style.css">
+<style>
+  html, body { height: auto; overflow: auto; }
+  body { font: 15px/1.5 -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; padding: 24px 16px 60px; }
+  h1 { font-size: 20px; font-weight: 600; margin: 0 0 4px; }
+  .lead { color: #8d887b; margin: 0 0 20px; max-width: 70ch; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(420px, 100%), 1fr)); gap: 18px; }
+  .panel { border: 1px solid #33322e; border-radius: 8px; overflow: hidden; }
+  .panel svg { display: block; width: 100%; height: auto; background: var(--bg); font-family: var(--hand); }
+  .panel svg * { vector-effect: non-scaling-stroke; }
+  .panel footer { display: flex; gap: 10px; align-items: center; justify-content: space-between; padding: 10px 12px; border-top: 1px solid #33322e; }
+  .panel footer b { font-weight: 600; }
+  .panel footer span { color: #8d887b; font-size: 13px; display: block; }
+  .panel button { font: inherit; color: var(--ink); background: none; border: 1px solid #33322e; border-radius: 6px; padding: 6px 12px; min-height: 36px; cursor: pointer; white-space: nowrap; }
+  .panel button:hover { border-color: #8d887b; }
+
+  /* 每一格共用：隐约的台灯、会晃的提示 */
+  .lamp { opacity: .3; animation: lampwait 2.6s ease-in-out infinite alternate; transition: opacity .5s; cursor: pointer; }
+  .panel:not(.lit) .mouth { fill: var(--bg); fill-opacity: 1; }
+  .lit .lamp { opacity: 1; animation: none; }
+  .yrs { transition: opacity .8s ease; }
+  .prompt { transition: opacity .8s ease; }
+
+  /* 2 没写完的字 */
+  .fx-hollow .ttl { fill: var(--ink); fill-opacity: 0; stroke: var(--ink); stroke-width: 1; opacity: .75; transition: fill-opacity .9s ease, opacity .9s ease; }
+  .fx-hollow.lit .ttl { fill-opacity: 1; opacity: 1; }
+
+  /* 3 年份倒回去 */
+  .fx-years .yrs.tick { animation: tick .11s ease-out; }
+  @keyframes tick { from { transform: translateY(-7px); opacity: .2; } to { transform: none; opacity: .6; } }
+
+  /* 4 萤火虫 */
+  .ff { fill: #F6DCA6; filter: drop-shadow(0 0 4px rgba(246, 220, 166, .9)); }
+  .ff1 { animation: drift1 13s ease-in-out infinite alternate, blink 3.1s ease-in-out infinite; }
+  .ff2 { animation: drift2 17s ease-in-out infinite alternate, blink 4.3s ease-in-out -1.2s infinite; }
+  .ff3 { animation: drift3 15s ease-in-out infinite alternate, blink 3.7s ease-in-out -2s infinite; }
+  .ff4 { animation: drift4 19s ease-in-out infinite alternate, blink 5.2s ease-in-out -.6s infinite; }
+  @keyframes blink { 0%, 100% { opacity: .1; } 45%, 60% { opacity: .95; } }
+  @keyframes drift1 { from { transform: translate(90px, 250px); } 50% { transform: translate(200px, 120px); } to { transform: translate(330px, 210px); } }
+  @keyframes drift2 { from { transform: translate(480px, 300px); } 50% { transform: translate(380px, 240px); } to { transform: translate(250px, 320px); } }
+  @keyframes drift3 { from { transform: translate(140px, 90px); } 50% { transform: translate(60px, 180px); } to { transform: translate(170px, 300px); } }
+  @keyframes drift4 { from { transform: translate(350px, 60px); } 50% { transform: translate(430px, 170px); } to { transform: translate(540px, 240px); } }
+
+  /* 5 飞蛾 */
+  .moth-wrap { transition: transform 1.3s ease-in, opacity 1.3s ease-in; }
+  .lit .moth-wrap { transform: translate(-240px, -150px); opacity: 0; }
+  .wing { animation: flap .16s ease-in-out infinite alternate; transform-box: fill-box; transform-origin: center; }
+  @keyframes flap { from { transform: scaleY(1); } to { transform: scaleY(.35); } }
+</style>
+</head>
+<body>
+<h1>欢迎画面特效演示</h1>
+<p class="lead">六个方案并排放在一起。每一格右上角都有那盏还没亮的台灯，点它可以看"开灯那一下"的反应（2 和 5 的变化最明显），两三秒后自动复原。1 和 3 是开场只放一次的效果，点"重播"再看。</p>
+
+<svg width="0" height="0" aria-hidden="true" focusable="false" style="position:absolute"><defs>
+<filter id="ck" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence type="fractalNoise" baseFrequency="0.03" numOctaves="2" seed="4" result="n"></feTurbulence><feDisplacementMap in="SourceGraphic" in2="n" scale="3" xChannelSelector="R" yChannelSelector="G" result="d"></feDisplacementMap><feTurbulence type="fractalNoise" baseFrequency="1.1" numOctaves="1" seed="2" result="gr"></feTurbulence><feColorMatrix in="gr" type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  3.4 0 0 0 -0.6" result="ga"></feColorMatrix><feComposite in="d" in2="ga" operator="in"></feComposite></filter>
+</defs></svg>
+
+<main class="grid" id="grid"></main>
+
+<script type="module">
+import { lamp } from '../js/objects.js';
+
+const TITLE = '未完工的夏天';
+const YEARS = '2010–2013';
+const title = (extra = '') => `<text class="tx ttl" x="300" y="160" text-anchor="middle" font-size="56" ${extra}>${TITLE}</text>`;
+const years = () => `<text class="tx yrs" x="300" y="208" text-anchor="middle" font-size="24" letter-spacing="3" opacity=".6">${YEARS}</text>`;
+const common = `
+<g class="prompt"><g filter="url(#ck)" class="w-prompt"><text class="tx" x="300" y="300" text-anchor="middle" font-size="24">點一下檯燈，開燈</text></g></g>
+<g filter="url(#ck)"><g class="lamp" transform="translate(520 118) scale(0.55)">${lamp()}</g></g>`;
+
+const panels = [
+  {
+    fx: 'write', name: '1 一笔一笔写出来', note: '开场时从左到右写出标题', replay: true,
+    svg: `<defs><clipPath id="wipe"><rect id="wipe-rect" x="126" y="98" width="0" height="84"></rect></clipPath></defs>
+<g filter="url(#ck)"><g clip-path="url(#wipe)">${title()}</g>${years()}</g>`,
+  },
+  {
+    fx: 'hollow', name: '2 没写完的字，开灯才写完', note: '点台灯：空心的字被填实',
+    svg: `<g filter="url(#ck)">${title()}${years()}</g>`,
+  },
+  {
+    fx: 'years', name: '3 年份从今天倒回去', note: '开场时年份一路翻回 2013', replay: true,
+    svg: `<g filter="url(#ck)">${title()}${years()}</g>`,
+  },
+  {
+    fx: 'fireflies', name: '4 萤火虫', note: '几点暖光慢慢飘，忽明忽暗',
+    svg: `<g filter="url(#ck)">${title()}${years()}</g>
+<circle class="ff ff1" r="2.2"></circle><circle class="ff ff2" r="1.8"></circle><circle class="ff ff3" r="2"></circle><circle class="ff ff4" r="1.6"></circle>`,
+  },
+  {
+    fx: 'moth', name: '5 一只飞蛾绕着台灯', note: '点台灯：飞蛾飞走',
+    svg: `<g filter="url(#ck)">${title()}${years()}</g>
+<g class="moth-wrap"><g filter="url(#ck)"><g>
+<path class="l wing" d="M0,0 q-8,-10 -14,-2 q6,7 14,2 q8,-10 14,-2 q-6,7 -14,2"></path>
+<animateMotion dur="3.4s" repeatCount="indefinite" path="M 502,56 a 42,26 0 1,1 -84,0 a 42,26 0 1,1 84,0"></animateMotion>
+</g></g></g>`,
+  },
+  {
+    fx: 'sweep', name: '6 像被远处的光扫过', note: '每隔几秒，一道柔光从台灯那边扫过标题',
+    svg: `<defs>
+<linearGradient id="band" x1="0" x2="1"><stop offset="0" stop-color="#fff" stop-opacity="0"></stop><stop offset="0.5" stop-color="#fff" stop-opacity="1"></stop><stop offset="1" stop-color="#fff" stop-opacity="0"></stop></linearGradient>
+<mask id="sweep" maskUnits="userSpaceOnUse" x="0" y="0" width="600" height="380"><rect y="60" width="260" height="190" fill="url(#band)" transform="skewX(-22)"><animate attributeName="x" values="820;820;-360" keyTimes="0;0.35;1" dur="6s" repeatCount="indefinite"></animate></rect></mask>
+</defs>
+<g filter="url(#ck)"><g opacity=".32">${title()}${years()}</g><g mask="url(#sweep)">${title()}${years()}</g></g>`,
+  },
+];
+
+const grid = document.getElementById('grid');
+grid.innerHTML = panels.map((p, i) => `<section class="panel fx-${p.fx}" data-i="${i}">
+<svg viewBox="0 0 600 380" role="img" aria-label="${p.name}">${p.svg}${common}</svg>
+<footer><div><b>${p.name}</b><span>${p.note}</span></div>${p.replay ? '<button type="button" class="replay">重播</button>' : ''}</footer>
+</section>`).join('');
+
+/* 1：标题从左到右写出来，然后年份、提示依次出现 */
+function playWrite(panel) {
+  const rect = panel.querySelector('#wipe-rect');
+  const yrs = panel.querySelector('.yrs');
+  const prompt = panel.querySelector('.prompt');
+  yrs.style.opacity = 0;
+  prompt.style.opacity = 0;
+  const t0 = performance.now();
+  const dur = 2300;
+  const frame = (now) => {
+    const t = Math.min(1, (now - t0) / dur);
+    rect.setAttribute('width', (348 * t).toFixed(1));
+    if (t < 1) requestAnimationFrame(frame);
+    else { yrs.style.opacity = ''; setTimeout(() => { prompt.style.opacity = ''; }, 700); }
+  };
+  requestAnimationFrame(frame);
+}
+
+/* 3：年份从今年一路翻回去 */
+function playYears(panel) {
+  const yrs = panel.querySelector('.yrs');
+  let y = new Date().getFullYear();
+  const step = () => {
+    yrs.textContent = String(y);
+    yrs.classList.remove('tick');
+    void yrs.getBBox();          // 让动画重新开始
+    yrs.classList.add('tick');
+    if (y > 2013) { y -= 1; setTimeout(step, 120); }
+    else setTimeout(() => { yrs.textContent = YEARS; yrs.classList.remove('tick'); void yrs.getBBox(); yrs.classList.add('tick'); }, 420);
+  };
+  step();
+}
+
+const players = { write: playWrite, years: playYears };
+
+grid.addEventListener('click', (e) => {
+  const panel = e.target.closest('.panel');
+  if (!panel) return;
+  const fx = panels[panel.dataset.i].fx;
+  if (e.target.closest('.replay')) { players[fx](panel); return; }
+  if (e.target.closest('.lamp')) {
+    if (panel.classList.contains('lit')) return;
+    panel.classList.add('lit');
+    setTimeout(() => panel.classList.remove('lit'), 2800);
+  }
+});
+
+for (const panel of grid.querySelectorAll('.panel')) {
+  const fx = panels[panel.dataset.i].fx;
+  if (players[fx]) setTimeout(() => players[fx](panel), 600);
+}
+</script>
+</body>
+</html>
