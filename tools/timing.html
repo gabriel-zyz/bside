@@ -30,7 +30,7 @@
   li.done .t { color: var(--ink); }
   li.next { background: #1b1a16; }
   li.next .x { color: var(--hot); }
-  li.playing .x { font-weight: 600; }
+  li.playing span.x { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 5px; }
   li.sel { outline: 1px solid var(--hot); outline-offset: -1px; }
   li input.x { font: inherit; color: var(--ink); background: #1b1a16; border: 1px solid var(--hot); border-radius: 4px; padding: 2px 6px; margin: -3px 0; width: 100%; outline: none; }
   #note { color: var(--hot); font-size: 14px; min-height: 21px; margin-bottom: 6px; }
@@ -281,7 +281,7 @@ async function load(id) {
   const missing = lines.filter((l) => l.t == null).length;
   $('#note').textContent = !lines.length ? '这首歌还没有歌词。点"加一句"开始写，写完一句按 Enter 接着写下一句。'
     : missing ? `有 ${missing} 句还没有时间。放歌，唱到那一句的开头时按空格。`
-    : '每一句都有时间了。播放时看加粗的那一句是不是正在唱的；不对就点它，再按 T 或 [ ] 调整。';
+    : '每一句都有时间了。播放时看带下划线的那一句是不是正在唱的；不对就点它，再按 T 或 [ ] 调整。';
   rebuild();
 }
 
