@@ -797,6 +797,8 @@ function onUp(e) {
 
   if (state.layout === 'mobile') {
     if (state.browse) {
+      // 這一下已經用來挑歌或收起盒子：盒子一收，手指底下就換成筆記本，別讓同一下又算成點筆記本
+      state.swallow = performance.now() + 400;
       const list = inBox();
       if (p.rec != null && p.rec === list[state.browse.pos]) {
         const from = p.rec;
@@ -808,7 +810,6 @@ function onUp(e) {
         renderBox();
       } else if (!p.onBox) {
         closeBrowse();
-        state.swallow = performance.now() + 400;   // 這一下只是收起盒子，不要順便點到筆記本
       }
     } else if (p.onBox) {
       openBrowse(p.rec);
