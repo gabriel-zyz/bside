@@ -1,0 +1,53 @@
+# 每次推送到 main，就把網站發佈到 GitHub Pages。
+# 只發佈網站用得到的檔案：測試用的音、校對工具、開發用的伺服器都不放上去。
+
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Assemble the site
+        run: |
+          mkdir -p _site/audio _site/lyrics
+          cp index.html _site/
+          cp -r css js _site/
+          cp audio/*.mp3 _site/audio/
+          find lyrics -maxdepth 1 -name '*.txt' ! -name 'dev-*' -exec cp {} _site/lyrics/ \;
+          if [ -d fonts ]; then cp -r fonts _site/; fi
+          python3 - <<'EOF'
+          import json
+          d = json.load(open('songs.json', encoding='utf-8'))
+          d['songs'] = [s for s in d['songs'] if not s.get('dev')]
+          json.dump(d, open('_site/songs.json', 'w', encoding='utf-8'), ensure_ascii=False, indent=2)
+          EOF
+          touch _site/.nojekyll
+          du -sh _site
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - id: deployment
+        uses: actions/deploy-pages@v4
