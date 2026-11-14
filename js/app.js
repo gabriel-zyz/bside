@@ -139,6 +139,41 @@ ${open('layer-lamp')}
   restore();
 }
 
+/* ---------- 沒有動作時的提示 ---------- */
+
+let hintTimer = 0;
+let hintBob = 0;
+
+function hideHint() {
+  clearTimeout(hintTimer);
+  clearInterval(hintBob);
+  stage.classList.remove('show-hint');
+}
+
+function bobFirst() {
+  if (state.hover != null || ptr || state.browse) return;
+  const first = document.querySelector('.rec');
+  if (!first) return;
+  first.classList.add('peek');
+  setTimeout(() => first.classList.remove('peek'), 700);
+}
+
+function showHint() {
+  if (state.light !== 'on' || state.current != null || ptr || state.browse) return;
+  stage.classList.add('show-hint');
+  bobFirst();
+  hintBob = setInterval(bobFirst, 2400);
+}
+
+/**
+ * 使用者每做一個動作就呼叫一次：收起提示，重新開始數 5 秒。
+ * 只有開著燈、轉盤上還沒有唱片時才需要提示。
+ */
+function touchHint() {
+  hideHint();
+  if (state.light === 'on' && state.current == null) hintTimer = setTimeout(showHint, 5000);
+}
+
 /* ---------- 開燈、關燈 ---------- */
 
 function setLight(mode) {
@@ -153,6 +188,7 @@ function setLight(mode) {
     setTimeout(() => stage.classList.remove('just-lit'), 1200);
   }
   if (mode === 'player') { state.nowLine = -2; markPlayer(true); }
+  touchHint();
 }
 
 /** 點檯燈：正在聽歌就關燈變成播放器；沒有歌就只是關燈 */
@@ -203,6 +239,9 @@ function restore() {
   const song = cur();
   if (state.browse) applyBrowse(); else renderBox();
   $('#platter-record').innerHTML = song && state.settled ? O.flatRecord(song) : '';
+  const tip = $('#platter-tip');
+  tip.textContent = state.layout === 'mobile' ? '點下面的盒子挑唱片' : '把唱片拖到這裡';
+  tip.setAttribute('font-size', state.layout === 'mobile' ? 28 : 26);
   setClock((song || state.songs[0] || {}).date);
   renderSpread(state.spread);
   armToTime();
@@ -244,6 +283,7 @@ function renderBox() {
 function setHover(i) {
   if (state.hover === i) return;
   state.hover = i;
+  if (i != null) touchHint();   // 已經找到唱片了
   for (const el of document.querySelectorAll('.rec')) el.classList.toggle('up', Number(el.dataset.i) === i);
 }
 
@@ -343,6 +383,7 @@ async function putOn(i, { gesture = false, instant = false, animate = true } = {
 
   audio.pause();
   state.current = i;
+  hideHint();
   state.settled = false;
   state.starting = false;
   state.hover = null;
@@ -629,6 +670,7 @@ function openBrowse(i) {
 function closeBrowse() {
   state.browse = null;
   applyBrowse();
+  touchHint();
 }
 
 function browseStep(d) {
@@ -652,6 +694,7 @@ function onDown(e) {
     state.swallow = performance.now() + 500;
     return;
   }
+  touchHint();
   if (e.target.closest('[data-act]')) return;
   const seek = e.target.closest('.seek');
   if (seek) {
@@ -749,6 +792,7 @@ async function putOnFrom(i, start) {
   const token = ++state.token;
   audio.pause();
   state.current = i;
+  hideHint();
   state.settled = false;
   state.starting = false;
   setArm(O.ARM.rest);
@@ -825,6 +869,7 @@ function onClick(e) {
 
 function onKey(e) {
   if (e.key === 'Escape' && state.light === 'player') { setLight('on'); return; }
+  touchHint();
   const btn = e.target.closest ? e.target.closest('[data-act]') : null;
   if (btn && (e.key === 'Enter' || e.key === ' ')) {
     e.preventDefault();

@@ -140,6 +140,11 @@ html, body {
 
 #obj-notebook { cursor: pointer; }
 
+/* 開燈後幾秒沒有動作：空轉盤上浮出一行字，提示該怎麼做 */
+.tip { opacity: 0; transition: opacity .9s ease; pointer-events: none; }
+.show-hint .tip { opacity: .85; animation: tip 2.4s ease-in-out infinite alternate; }
+@keyframes tip { from { opacity: .5; } to { opacity: .95; } }
+
 /* 燈罩口：亮著的燈 */
 .mouth { fill: #F3DDAE; fill-opacity: .9; }
 

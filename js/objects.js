@@ -181,6 +181,7 @@ export function turntable(phi, { withControls = true } = {}) {
 <g transform="translate(${CX} ${CY})" id="platter-center">
 <circle class="f" cx="0" cy="0" r="159" stroke-dasharray="1 7"></circle>
 <circle class="f" id="platter-hint" cx="0" cy="0" r="152" stroke-dasharray="5 8"></circle>
+<text class="tx tip" id="platter-tip" x="0" y="-22" text-anchor="middle"></text>
 <circle class="s" cx="0" cy="0" r="3.5"></circle>
 </g>
 </g>
