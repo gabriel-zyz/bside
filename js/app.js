@@ -36,6 +36,7 @@ const state = {
   startAt: 0,        // 這首歌是什麼時候開始出聲的（Date.now()）
   sought: false,     // 這首歌開始之後，使用者有沒有自己拖過進度
   retried: false,    // 這首歌已經因為「沒播完就結束」重來過一次
+  spoiled: false,    // 還沒正式出聲，瀏覽器就說這首播完了：出聲時要重新載入
   credits: '',
   site: {},          // 網站的名字和署名
 };
@@ -405,7 +406,6 @@ function prime(src) {
       if (id !== primeId || !audio.muted) return;
       audio.pause();
       if (audio.currentTime > 0.3) audio.currentTime = 0;
-      audio.muted = false;
     }).catch((err) => { dbg('prime rejected: ' + err.name); if (id === primeId) audio.muted = false; });
   }
 }
@@ -417,6 +417,13 @@ function prime(src) {
  */
 function startAudio() {
   primeId += 1;
+  const song = cur();
+  if (state.spoiled && song) {
+    // 預播被瀏覽器當成「播完」了（iPhone 會這樣，連歌的長度都變成 0）：重新載入，和接下一首時一樣直接放
+    state.spoiled = false;
+    audio.src = song.audio;
+    dbg('reload before start');
+  }
   audio.muted = false;
   if (audio.currentTime > 0.3) { try { audio.currentTime = 0; } catch { /* 還沒載入時不能設 */ } }
   state.startAt = Date.now();
@@ -440,6 +447,8 @@ async function putOn(i, { gesture = false, instant = false, animate = true } = {
   audio.pause();
   state.current = i;
   state.retried = false;
+  state.spoiled = false;
+  state.startAt = 0;
   hideHint();
   state.settled = false;
   state.starting = false;
@@ -516,12 +525,19 @@ function step(d) {
  * 那是沒放成功，不是真的播完。
  */
 function endedEarly() {
+  if (state.sought) return false;
   const d = audio.duration;
-  if (state.sought || !state.startAt || !(d > 30) || !isFinite(d)) return false;
+  if (!(d > 0) || !isFinite(d)) return true;      // 連長度都沒有，不可能是播完
   return (Date.now() - state.startAt) / 1000 < d - 15;
 }
 
 function onEnded() {
+  if (!state.startAt) {
+    // 還在靜音預播、根本沒出聲過：不算播完，等到該出聲的時候重新載入（見 startAudio）
+    state.spoiled = true;
+    dbg('ended before start: ignored');
+    return;
+  }
   if (endedEarly()) {
     // 不要當成播完去接下一首（那樣會一路跳過整盒唱片）：把這一首重新載入再放一次，還不行就停在這裡
     const song = cur();
@@ -892,6 +908,8 @@ async function putOnFrom(i, start) {
   audio.pause();
   state.current = i;
   state.retried = false;
+  state.spoiled = false;
+  state.startAt = 0;
   hideHint();
   state.settled = false;
   state.starting = false;
@@ -1012,7 +1030,7 @@ function bind() {
 
 async function init() {
   const dev = new URLSearchParams(location.search).has('dev');
-  if (new URLSearchParams(location.search).has('debug')) dbg = (await import('./debug.js')).start(audio);
+  if (new URLSearchParams(location.search).has('debug')) { dbg = (await import('./debug.js')).start(audio); dbg('build 3'); }
   const data = await (await fetch('songs.json')).json();
   state.songs = data.songs.filter((s) => dev || !s.dev);
   if (data.shuffle) {
