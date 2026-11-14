@@ -785,7 +785,7 @@ function onCancel() {
 }
 
 function onOver(e) {
-  if (ptr || e.pointerType !== 'mouse' || state.layout === 'mobile') return;
+  if (ptr || e.pointerType !== 'mouse' || state.layout === 'mobile' || state.light !== 'on') return;
   const rec = e.target.closest('.rec');
   if (rec) setHover(Number(rec.dataset.i));
 }

@@ -116,11 +116,17 @@ html, body {
   visibility: visible;
   transition: opacity 1.1s ease, visibility 0s;
 }
-.light-off #desk, .mode-player #desk {
+.mode-player #desk {
   opacity: 0;
   visibility: hidden;
   transition: opacity .5s ease, visibility 0s linear .5s;
 }
+/* 還沒開燈：桌上的東西都看不見，只有檯燈隱約有個輪廓，燈罩口是暗的 */
+#desk .layer { transition: opacity .9s ease; }
+.light-off #desk { pointer-events: none; }
+.light-off #desk .layer { opacity: 0; }
+.light-off #desk #layer-lamp { opacity: .2; }
+.light-off .mouth { fill: var(--bg); fill-opacity: 1; }
 /* 剛開燈的那一下：閃兩下才亮穩 */
 .just-lit #desk { animation: lit 1.1s ease-out; }
 @keyframes lit {
