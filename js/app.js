@@ -178,6 +178,22 @@ function touchHint() {
   if (state.light === 'on' && state.current == null) hintTimer = setTimeout(showHint, 5000);
 }
 
+/* ---------- 第一首歌開始後，提示可以換成播放器 ---------- */
+
+let nbTipDone = false;
+
+/** 整個造訪過程只提示一次：歌開始幾秒後出現，停留一會兒自己消失 */
+function scheduleNotebookTip() {
+  if (nbTipDone) return;
+  nbTipDone = true;
+  setTimeout(() => {
+    // 已經自己找到播放器、正在挑歌、或歌詞已經翻頁的，就不用提示了
+    if (state.light !== 'on' || state.browse || state.spread !== 0 || !isPlaying()) return;
+    stage.classList.add('show-nbtip');
+    setTimeout(() => stage.classList.remove('show-nbtip'), 9000);
+  }, 4000);
+}
+
 /* ---------- 開燈、關燈 ---------- */
 
 function setLight(mode) {
@@ -191,7 +207,8 @@ function setLight(mode) {
     stage.classList.add('just-lit');
     setTimeout(() => stage.classList.remove('just-lit'), 1200);
   }
-  if (mode === 'player') { state.nowLine = -2; markPlayer(true); }
+  if (mode === 'player') { state.nowLine = -2; markPlayer(true); nbTipDone = true; }
+  if (mode !== 'on') stage.classList.remove('show-nbtip');
   touchHint();
 }
 
@@ -246,6 +263,9 @@ function restore() {
   const tip = $('#platter-tip');
   tip.textContent = state.layout === 'mobile' ? '點下面的盒子挑唱片' : '把唱片拖到這裡';
   tip.setAttribute('font-size', state.layout === 'mobile' ? 28 : 26);
+  const nbTip = $('#nb-tip');
+  nbTip.textContent = '點筆記本，關燈看歌詞';
+  nbTip.setAttribute('font-size', state.layout === 'mobile' ? 19 : 17);
   setClock((song || state.songs[0] || {}).date);
   renderSpread(state.spread);
   armToTime();
@@ -476,6 +496,7 @@ const isPlaying = () => !audio.paused && !audio.muted;
 function updatePlaying() {
   const on = isPlaying();
   stage.classList.toggle('is-playing', on);
+  if (on) scheduleNotebookTip();
   for (const btn of document.querySelectorAll('.btn[data-act="play"]')) {
     btn.querySelector('.icon').innerHTML = on ? O.ICON.pause : O.ICON.play;
     btn.setAttribute('aria-label', on ? '暫停' : '播放');

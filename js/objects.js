@@ -250,6 +250,7 @@ export function notebook(phi) {
   const text = `
 <g transform="${tr(U)}">
 <g id="nb-text"></g>
+<text class="tx tip2" id="nb-tip" x="260" y="${PAGE.row0 - 4 + PAGE.rowH * 8}"></text>
 <polygon class="s" id="nb-flip" points="240,2 477,2 477,328 240,328" visibility="hidden"></polygon>
 </g>`;
   return { below, text };

@@ -152,6 +152,10 @@ html, body {
 .show-hint .tip { opacity: .85; animation: tip 2.4s ease-in-out infinite alternate; }
 @keyframes tip { from { opacity: .5; } to { opacity: .95; } }
 
+/* 第一首歌開始後，筆記本右頁最下面一行短暫出現的提示：點這裡可以換成播放器 */
+.tip2 { opacity: 0; transition: opacity 1.2s ease; pointer-events: none; }
+.show-nbtip .tip2 { opacity: .8; }
+
 /* 燈罩口：亮著的燈 */
 .mouth { fill: #F3DDAE; fill-opacity: .9; }
 
