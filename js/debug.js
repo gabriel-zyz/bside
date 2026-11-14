@@ -20,10 +20,16 @@ export function start(audio) {
   };
 
   const file = () => { const src = audio.currentSrc || audio.src || ''; return src.startsWith('blob:') ? '(memory)' : src.split('/').pop().replace('.mp3', ''); };
+  // 目前位置之後還有多少秒已經載好
+  const ahead = () => {
+    const b = audio.buffered;
+    for (let i = 0; i < b.length; i++) if (b.start(i) <= audio.currentTime + 0.5 && b.end(i) >= audio.currentTime) return (b.end(i) - audio.currentTime).toFixed(0);
+    return '0';
+  };
   for (const type of AUDIO_EVENTS) {
     audio.addEventListener(type, () => {
       const d = isFinite(audio.duration) ? audio.duration.toFixed(0) : String(audio.duration);
-      write(`♪ ${type} ${file()} t=${audio.currentTime.toFixed(1)}/${d} rs=${audio.readyState} ns=${audio.networkState}`
+      write(`♪ ${type} ${file()} t=${audio.currentTime.toFixed(1)}/${d} buf=${ahead()} rs=${audio.readyState} ns=${audio.networkState}`
         + `${audio.muted ? ' muted' : ''}${audio.paused ? ' paused' : ''}${audio.error ? ' err=' + audio.error.code : ''}`);
     });
   }
@@ -41,6 +47,24 @@ export function start(audio) {
   document.addEventListener('visibilitychange', () => write(document.hidden ? '— screen off / in background —' : '— back on screen —'));
   window.addEventListener('error', (e) => write(`JS error: ${e.message}`));
   window.addEventListener('unhandledrejection', (e) => write(`rejection: ${e.reason && e.reason.message ? e.reason.message : e.reason}`));
+
+  // 每秒看一次：網頁本身有沒有被系統凍住；聲音有沒有在不是暫停的情況下停住不走
+  let tick = Date.now();
+  let lastT = -1;
+  let stuck = 0;
+  setInterval(() => {
+    const now = Date.now();
+    if (now - tick > 5000) write(`page was frozen for ${((now - tick) / 1000).toFixed(0)} s`);
+    tick = now;
+    if (!audio.paused && !audio.ended && audio.currentTime === lastT) {
+      stuck += 1;
+      if (stuck === 3) write(`sound stuck at t=${audio.currentTime.toFixed(1)} buf=${ahead()} rs=${audio.readyState} ns=${audio.networkState}${document.hidden ? ' (screen off)' : ''}`);
+    } else {
+      if (stuck >= 3) write(`sound moving again at t=${audio.currentTime.toFixed(1)}`);
+      stuck = 0;
+    }
+    lastT = audio.currentTime;
+  }, 1000);
 
   write('debug on');
   return write;

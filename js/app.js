@@ -1079,7 +1079,7 @@ function bind() {
 
 async function init() {
   const dev = new URLSearchParams(location.search).has('dev');
-  if (new URLSearchParams(location.search).has('debug')) { dbg = (await import('./debug.js')).start(audio); dbg('build 4'); }
+  if (new URLSearchParams(location.search).has('debug')) { dbg = (await import('./debug.js')).start(audio); dbg('build 5'); }
   const data = await (await fetch('songs.json')).json();
   state.songs = data.songs.filter((s) => dev || !s.dev);
   if (data.shuffle) {
@@ -1110,12 +1110,14 @@ async function init() {
   // 開始出聲一陣子之後的跳轉都算使用者拖的（鎖屏上的進度條也會走到這裡）
   audio.addEventListener('seeking', () => { if (state.startAt && Date.now() - state.startAt > 2000) state.sought = true; });
 
+  // 告訴 iPhone 這個頁面是用來播音樂的：鎖屏、靜音鍵撥到靜音時也照常播
+  if (navigator.audioSession) { try { navigator.audioSession.type = 'playback'; } catch { /* 不支援就算了 */ } }
   if ('mediaSession' in navigator) {
     const set = (name, fn) => { try { navigator.mediaSession.setActionHandler(name, fn); } catch { /* 不支援就算了 */ } };
-    set('play', () => { if (audio.paused) toggle(); });
-    set('pause', () => { if (!audio.paused) toggle(); });
-    set('previoustrack', () => step(-1));
-    set('nexttrack', () => step(1));
+    set('play', () => { dbg('lock screen: play'); if (audio.paused) toggle(); });
+    set('pause', () => { dbg('lock screen: pause'); if (!audio.paused) toggle(); });
+    set('previoustrack', () => { dbg('lock screen: previous'); step(-1); });
+    set('nexttrack', () => { dbg('lock screen: next'); step(1); });
   }
 
   // 線條輕微抖動
