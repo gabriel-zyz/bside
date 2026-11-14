@@ -908,6 +908,15 @@ async function init() {
   const dev = new URLSearchParams(location.search).has('dev');
   const data = await (await fetch('songs.json')).json();
   state.songs = data.songs.filter((s) => dev || !s.dev);
+  if (data.shuffle) {
+    // 每次打開都把順序重新洗一遍（測試用的音留在最後，不參與）
+    const real = state.songs.filter((s) => !s.dev);
+    for (let i = real.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [real[i], real[j]] = [real[j], real[i]];
+    }
+    state.songs = [...real, ...state.songs.filter((s) => s.dev)];
+  }
   state.credits = data.credits || '';
   state.site = data.site || {};
   if (state.site.title) document.title = state.site.title;

@@ -15,6 +15,9 @@ export const textW = (s) => [...s].reduce((a, c) => a + charW(c), 0);
 
 /** 把歌名拆成最多兩行，盡量在標點或空格處斷開 */
 export function titleLines(title) {
+  // 歌名後面帶括號說明的（例如「（Jazz版）」），括號那一段另起一行
+  const paren = title.search(/[（(]/);
+  if (paren > 0) return [title.slice(0, paren).trim(), title.slice(paren).trim()];
   const chars = [...title];
   const total = textW(title);
   if (total <= 4.6) return [title];
