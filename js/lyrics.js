@@ -42,29 +42,62 @@ export function parseLyrics(source) {
   return rows;
 }
 
-// 第一個跨頁：左頁上面是歌名和日期，下面寫 6 句；右頁 9 句。之後每個跨頁 18 句。
-const FIRST_LEFT = 6;
-const PER_PAGE = 9;
-const FIRST = FIRST_LEFT + PER_PAGE;
+// 筆記本一頁 9 行。第一個跨頁的左頁上面是歌名和署名，歌詞從第 4 行開始。
+const ROWS = 9;
+const FIRST_ROW = 3;
 
-/** 第 k 句在第幾個跨頁 */
-export function spreadOf(k) {
-  return k < FIRST ? 0 : 1 + Math.floor((k - FIRST) / (PER_PAGE * 2));
+/**
+ * 把一句歌詞拆成寫得下的幾段。
+ * units 量一段字有多寬（中文一個字算 1，英文字母約半個）；一行大約放得下 max。
+ * 稍微超出一點（到 squeeze 為止）就不拆，交給畫面把字略微壓窄。
+ */
+export function wrapLine(text, units, max = 10.2, squeeze = 12) {
+  const total = units(text);
+  if (total <= squeeze) return [text];
+  const n = Math.ceil(total / max);
+  const target = total / n;
+  // 有空格的（英文）在空格處斷；沒有空格的（中文）可以在任何兩個字之間斷
+  const spaced = /\s/.test(text.trim());
+  const pieces = spaced ? text.trim().split(/(\s+)/) : [...text];
+  const parts = [];
+  let cur = '';
+  for (const piece of pieces) {
+    const next = cur + piece;
+    if (cur.trim() && units(next.trim()) > max) { parts.push(cur.trim()); cur = piece.trim() ? piece : ''; continue; }
+    cur = next;
+    if (parts.length < n - 1 && units(cur.trim()) >= target) { parts.push(cur.trim()); cur = ''; }
+  }
+  if (cur.trim()) parts.push(cur.trim());
+  return parts;
 }
 
-/** 第 k 句的位置：{ side: 'L' | 'R', row: 0..8 } */
-export function slotOf(k) {
-  if (k < FIRST_LEFT) return { side: 'L', row: k + 3 };
-  if (k < FIRST) return { side: 'R', row: k - FIRST_LEFT };
-  const j = (k - FIRST) % (PER_PAGE * 2);
-  return j < PER_PAGE ? { side: 'L', row: j } : { side: 'R', row: j - PER_PAGE };
-}
-
-/** 某個跨頁裡有哪些句子（索引範圍 [from, to)） */
-export function rangeOf(spread, total) {
-  const from = spread === 0 ? 0 : FIRST + (spread - 1) * PER_PAGE * 2;
-  const to = Math.min(total, spread === 0 ? FIRST : from + PER_PAGE * 2);
-  return [from, to];
+/**
+ * 決定每一句寫在第幾個跨頁、哪一頁、哪一行。
+ * 回傳和 lines 等長的陣列：[{ spread, parts: [{ side: 'L' | 'R', row, text }] }]。
+ * 一句拆成幾段時，這幾段一定在同一頁，不會被翻頁切開。
+ */
+export function layoutPages(lines, units) {
+  const pages = [];
+  let spread = 0;
+  let side = 'L';
+  let row = FIRST_ROW;
+  const nextPage = () => {
+    if (side === 'L') side = 'R'; else { side = 'L'; spread += 1; }
+    row = 0;
+  };
+  for (const line of lines) {
+    const texts = wrapLine(line.text, units);
+    if (row + texts.length > ROWS && texts.length <= ROWS) nextPage();
+    const first = spread;
+    const parts = [];
+    for (const text of texts) {
+      if (row >= ROWS) nextPage();
+      parts.push({ side, row, text });
+      row += 1;
+    }
+    pages.push({ spread: first, parts });
+  }
+  return pages;
 }
 
 /** 時間 t 時正在唱第幾句；還沒開始唱回傳 -1 */

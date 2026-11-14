@@ -1,8 +1,19 @@
 {
   "note": "歌單。順序就是盒子裡從前到後的順序，也是上一首/下一首的順序。date 會顯示在時鐘上。lyrics 是這首歌的歌詞檔，字和時間都在那一個檔案裡。dev 為 true 的是測試用的音，只有網址帶 ?dev=1 時才出現。site 是網站的名字和署名，會顯示在瀏覽器分頁和手機鎖屏上。credits 是寫在筆記本上歌名下面的那一行，每首歌都用它；某一首想寫不一樣的，就在那首歌裡另外加一個 credits。",
-  "site": { "title": "未完工的夏天2010-2013", "artist": "Gabriel" },
+  "site": {
+    "title": "未完工的夏天2010-2013",
+    "artist": "Gabriel"
+  },
   "credits": "詞曲：Gabriel　重製：Mureka",
   "songs": [
+    {
+      "id": "come-run-with-my-dogs-and-cats",
+      "title": "Come Run with My Dogs and Cats",
+      "date": "2010-12-12",
+      "audio": "audio/come-run-with-my-dogs-and-cats.mp3",
+      "lyrics": "lyrics/come-run-with-my-dogs-and-cats.txt",
+      "lang": "en"
+    },
     {
       "id": "suzhou-good-night",
       "title": "蘇州，good night",
@@ -10,9 +21,121 @@
       "audio": "audio/suzhou-good-night.mp3",
       "lyrics": "lyrics/suzhou-good-night.txt"
     },
-    { "id": "dev-tone-1", "title": "測試一", "date": "2011-11-09", "audio": "audio/dev/tone-1.mp3", "lyrics": "lyrics/dev-tone-1.txt", "dev": true },
-    { "id": "dev-tone-2", "title": "測試二 test", "date": "2012-07-03", "audio": "audio/dev/tone-2.mp3", "lyrics": null, "dev": true },
-    { "id": "dev-tone-3", "title": "未完工的夏天", "date": "2012-09-26", "audio": "audio/dev/tone-3.mp3", "lyrics": null, "dev": true },
-    { "id": "dev-tone-4", "title": "測試四", "date": "2013-06-10", "audio": "audio/dev/tone-4.mp3", "lyrics": null, "dev": true }
+    {
+      "id": "ting",
+      "title": "聽",
+      "date": "2011-11-09",
+      "audio": "audio/ting.mp3",
+      "lyrics": "lyrics/ting.txt"
+    },
+    {
+      "id": "wuhou-de-ge",
+      "title": "午後的歌",
+      "date": "2012-01-21",
+      "audio": "audio/wuhou-de-ge.mp3",
+      "lyrics": "lyrics/wuhou-de-ge.txt"
+    },
+    {
+      "id": "qingchun-shikong",
+      "title": "青春失控",
+      "date": "2012-01-21",
+      "audio": "audio/qingchun-shikong.mp3",
+      "lyrics": "lyrics/qingchun-shikong.txt"
+    },
+    {
+      "id": "kerouac",
+      "title": "凱魯亞克",
+      "date": "2012-01-21",
+      "audio": "audio/kerouac.mp3",
+      "lyrics": "lyrics/kerouac.txt"
+    },
+    {
+      "id": "weiwangong-de-xiatian",
+      "title": "未完工的夏天",
+      "date": "2012-07-03",
+      "audio": "audio/weiwangong-de-xiatian.mp3",
+      "lyrics": "lyrics/weiwangong-de-xiatian.txt"
+    },
+    {
+      "id": "ye-zirao",
+      "title": "夜自擾",
+      "date": "2012-09-26",
+      "audio": "audio/ye-zirao.mp3",
+      "lyrics": "lyrics/ye-zirao.txt"
+    },
+    {
+      "id": "hua-wuyan",
+      "title": "畫無言",
+      "date": "2012-10-30",
+      "audio": "audio/hua-wuyan.mp3",
+      "lyrics": "lyrics/hua-wuyan.txt"
+    },
+    {
+      "id": "beiwei-lingxia",
+      "title": "北緯零下",
+      "date": "2013-01-28",
+      "audio": "audio/beiwei-lingxia.mp3",
+      "lyrics": "lyrics/beiwei-lingxia.txt"
+    },
+    {
+      "id": "pamir-de-feng",
+      "title": "帕米爾的風",
+      "date": "2013-01-28",
+      "audio": "audio/pamir-de-feng.mp3",
+      "lyrics": "lyrics/pamir-de-feng.txt"
+    },
+    {
+      "id": "shancheng-sanyue",
+      "title": "山城三月",
+      "date": "2013-03-23",
+      "audio": "audio/shancheng-sanyue.mp3",
+      "lyrics": "lyrics/shancheng-sanyue.txt"
+    },
+    {
+      "id": "dang-fengkuang-zouyuan",
+      "title": "當瘋狂在生命裡走遠",
+      "date": "2013-05-26",
+      "audio": "audio/dang-fengkuang-zouyuan.mp3",
+      "lyrics": "lyrics/dang-fengkuang-zouyuan.txt"
+    },
+    {
+      "id": "qingchen-qu",
+      "title": "清晨曲",
+      "date": "2013-06-10",
+      "audio": "audio/qingchen-qu.mp3",
+      "lyrics": "lyrics/qingchen-qu.txt"
+    },
+    {
+      "id": "dev-tone-1",
+      "title": "測試一",
+      "date": "2011-11-09",
+      "audio": "audio/dev/tone-1.mp3",
+      "lyrics": "lyrics/dev-tone-1.txt",
+      "dev": true
+    },
+    {
+      "id": "dev-tone-2",
+      "title": "測試二 test",
+      "date": "2012-07-03",
+      "audio": "audio/dev/tone-2.mp3",
+      "lyrics": null,
+      "dev": true
+    },
+    {
+      "id": "dev-tone-3",
+      "title": "未完工的夏天",
+      "date": "2012-09-26",
+      "audio": "audio/dev/tone-3.mp3",
+      "lyrics": null,
+      "dev": true
+    },
+    {
+      "id": "dev-tone-4",
+      "title": "測試四",
+      "date": "2013-06-10",
+      "audio": "audio/dev/tone-4.mp3",
+      "lyrics": null,
+      "dev": true
+    }
   ]
 }

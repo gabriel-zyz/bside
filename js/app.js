@@ -4,7 +4,7 @@ import { K, pageEdge, f1 } from './projection.js';
 import * as O from './objects.js';
 import { LAYOUTS, pickLayout } from './layout.js';
 import * as sfx from './sfx.js';
-import { parseLyrics, spreadOf, slotOf, rangeOf, activeAt } from './lyrics.js';
+import { parseLyrics, layoutPages, activeAt } from './lyrics.js';
 
 const $ = (sel) => document.querySelector(sel);
 const stage = $('#stage');
@@ -24,6 +24,7 @@ const state = {
   browse: null,      // 手機挑歌時：{ pos }，pos 是盒子裡第幾張正對著你
   token: 0,          // 每次換唱片加一，用來丟掉過時的非同步結果
   lyrics: [],
+  pages: [],         // 每一句寫在筆記本的哪一頁哪一行
   spread: 0,
   active: -1,
   flipping: false,
@@ -35,6 +36,7 @@ const state = {
 };
 
 const cur = () => (state.current == null ? null : state.songs[state.current]);
+const spreadOf = (k) => (state.pages[k] ? state.pages[k].spread : 0);
 const item = (name) => LAYOUTS[state.layout].items.find((it) => it[0] === name);
 const place = ([, x, y, phi, s]) => `translate(${x} ${y}) rotate(${phi})${s !== 1 ? ` scale(${s})` : ''}`;
 
@@ -542,6 +544,7 @@ function setClock(date) {
 
 async function loadLyrics(song, token) {
   state.lyrics = [];
+  state.pages = [];
   state.spread = 0;
   state.active = -1;
   renderSpread(0);
@@ -553,6 +556,7 @@ async function loadLyrics(song, token) {
     const lines = parseLyrics(await res.text());
     if (token !== state.token) return;
     state.lyrics = lines;
+    state.pages = layoutPages(lines, O.textW);
     renderSpread(0);
     renderPlayer();
   } catch { /* 沒有歌詞就留白 */ }
@@ -574,13 +578,16 @@ function renderSpread(spread) {
       out += `<text class="tx" x="26" y="70" font-size="${f1(small)}" opacity=".55">${O.esc(credits)}</text>`;
     }
   }
-  const [from, to] = rangeOf(spread, state.lyrics.length);
-  for (let k = from; k < to; k++) {
-    const { side, row } = slotOf(k);
-    const text = state.lyrics[k].text;
-    const squeeze = O.textW(text) * 20 > 204 ? ' textLength="204" lengthAdjust="spacingAndGlyphs"' : '';
-    out += `<text class="ly" data-k="${k}" x="${side === 'L' ? 24 : 260}" y="${P.row0 - 4 + P.rowH * row}" font-size="20"${squeeze}>${O.esc(text)}</text>`;
-  }
+  state.pages.forEach((page, k) => {
+    if (page.spread !== spread) return;
+    page.parts.forEach(({ side, row, text }, n) => {
+      // 一句太長時會拆成幾行；接下去的行往裡縮一點，看得出是同一句
+      const indent = n ? 14 : 0;
+      const room = 204 - indent;
+      const squeeze = O.textW(text) * 20 > room ? ` textLength="${room}" lengthAdjust="spacingAndGlyphs"` : '';
+      out += `<text class="ly" data-k="${k}" x="${(side === 'L' ? 24 : 260) + indent}" y="${P.row0 - 4 + P.rowH * row}" font-size="20"${squeeze}>${O.esc(text)}</text>`;
+    });
+  });
   g.innerHTML = out;
   markLines();
 }

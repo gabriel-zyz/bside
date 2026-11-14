@@ -1,0 +1,46 @@
+# 这首歌的歌词。网页、校对工具、自动对时间，读的都是这一个文件。
+#
+# 一行一句。前面的 [分:秒] 是这一句开始唱的时间。
+# 改字、拆行、并行、加一句、删一句，都可以在 tools/timing.html 里做，也可以直接改这个文件。
+# 没写时间的行，网页会先把它排在前后两句的正中间。
+# 以 # 开头的行是说明，不会显示。
+
+Get away to nowhere
+Here lay a sober man in the rain
+Grass did sway
+She said there was a way
+What was waiting for her
+She didn’t care
+Anyway
+March on
+Hold on
+Here stood a liar with a gun
+He wrote a song
+Then turned me on
+Said if I one day find a bullet
+Make a sound
+Back home
+Bring your dogs and cats
+Come run with mine
+Make a record of what we sang
+Sell it to myself
+We could see the top of the high mountain so well
+I was already freaking caught in the trap
+Why do I feel so sad
+Night fell
+Light faded
+Here flew an angel, naked out there
+Give me wings
+Forced me to sing
+Invited me to fly with her to the hell
+I walked away
+Back home
+Bring your dogs and cats
+Come run with mine
+Make a record of what we sang
+Sell it to myself
+We could see the top of the high mountain so well
+I was already freaking caught in the trap
+Why do I feel so sad
+I was already freaking caught in the trap
+Why do I feel so sad

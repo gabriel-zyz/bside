@@ -119,7 +119,8 @@ def main():
 
     whisper.timing.dtw_cpu = dtw_plain
     model = stable_whisper.load_model(model_name, device="cpu")
-    result = model.align(str(ROOT / song["audio"]), "\n".join(lines), language="zh", original_split=True)
+    # 歌是什么语言：songs.json 里这首歌的 lang，没写就当作中文
+    result = model.align(str(ROOT / song["audio"]), "\n".join(lines), language=song.get("lang", "zh"), original_split=True)
 
     segs = result.segments
     if len(segs) != len(lines):

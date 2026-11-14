@@ -1,0 +1,51 @@
+# 这首歌的歌词。网页、校对工具、自动对时间，读的都是这一个文件。
+#
+# 一行一句。前面的 [分:秒] 是这一句开始唱的时间。
+# 改字、拆行、并行、加一句、删一句，都可以在 tools/timing.html 里做，也可以直接改这个文件。
+# 没写时间的行，网页会先把它排在前后两句的正中间。
+# 以 # 开头的行是说明，不会显示。
+
+霓虹燈在閃爍
+開始一夜的夢
+閉上眼睛等候
+這夜晚再沒有惶恐
+有的只是夢
+赤裸裸的夢
+沒有人醒來
+沒有人逃脫
+她在人群中
+微醺地擺動
+迷離的眼神
+望不到昨日的傷痛
+想看清一切
+卻閉上雙眼
+不怕人來擾
+庸人在自擾
+Je te montre vraiment mon cœur
+Parce que ce soir, tu es ma belle
+As-tu du temps pour un café
+Dis-moi que tu t'appelles Été
+她在人群中
+微醺地擺動
+迷離的眼神
+望不到昨日的傷痛
+想看清一切
+卻閉上雙眼
+不怕人來擾
+庸人在自擾
+霓虹燈閃爍
+開始一夜的夢
+閉上眼等候
+夜晚再沒有惶恐
+有的只是夢
+赤裸裸的夢
+沒有人醒來
+沒有人逃脫
+Je te montre vraiment mon cœur
+Parce que ce soir, tu es ma belle
+As-tu du temps pour un café
+Dis-moi que tu t'appelles Été
+Je te montre vraiment mon cœur
+Parce que ce soir, tu es ma belle
+As-tu du temps pour un café
+Dis-moi que tu t'appelles Été
