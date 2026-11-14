@@ -691,11 +691,7 @@ function onDown(e) {
   sfx.unlock();
   if (e.button > 0) return;
   const svg = stage;
-  if (state.light === 'off') {            // 還沒開燈：點哪裡都是開燈
-    setLight('on');
-    state.swallow = performance.now() + 500;
-    return;
-  }
+  if (state.light === 'off') return;      // 還沒開燈：只有點檯燈有用（在 onClick 裡處理）
   touchHint();
   if (e.target.closest('[data-act]')) return;
   const seek = e.target.closest('.seek');
@@ -855,6 +851,7 @@ function press(act) {
 function onClick(e) {
   if (performance.now() < state.swallow) return;
   const el = e.target.closest('[data-act]');
+  if (state.light === 'off' && !(el && el.dataset.act === 'lamp')) return;
   if (el) { press(el.dataset.act); return; }
   if (state.light === 'player') {
     // 點某一句歌詞：跳到那一句
@@ -876,7 +873,7 @@ function onKey(e) {
   if (btn && (e.key === 'Enter' || e.key === ' ')) {
     e.preventDefault();
     sfx.unlock();
-    if (state.light === 'off') setLight('on'); else press(btn.dataset.act);
+    if (state.light !== 'off' || btn.dataset.act === 'lamp') press(btn.dataset.act);
     return;
   }
   if (e.target.classList && e.target.classList.contains('seek') && (e.key === 'ArrowLeft' || e.key === 'ArrowRight') && audio.duration > 0) {

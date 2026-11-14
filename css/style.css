@@ -125,7 +125,9 @@ html, body {
 #desk .layer { transition: opacity .9s ease; }
 .light-off #desk { pointer-events: none; }
 .light-off #desk .layer { opacity: 0; }
-.light-off #desk #layer-lamp { opacity: .2; }
+.light-off #desk #layer-lamp { opacity: .2; animation: lampwait 2.6s ease-in-out infinite alternate; }
+/* 等人來點的檯燈：輪廓緩緩地明暗，讓人注意到它 */
+@keyframes lampwait { from { opacity: .16; } to { opacity: .42; } }
 .light-off .mouth { fill: var(--bg); fill-opacity: 1; }
 /* 剛開燈的那一下：閃兩下才亮穩 */
 .just-lit #desk { animation: lit 1.1s ease-out; }
@@ -154,14 +156,19 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
+  pointer-events: none;   /* 字不擋住檯燈：只有點檯燈才開燈 */
   transition: opacity .4s ease, visibility 0s;
 }
 #welcome svg {
-  width: min(86vw, 640px);
+  width: min(88vw, 660px);
   height: auto;
   overflow: visible;
   font-family: var(--hand);
+}
+/* 只有提示那一行在晃 */
+.w-prompt {
+  transform-box: fill-box;
+  transform-origin: center;
   animation: sway 3.4s ease-in-out infinite alternate;
 }
 .light-on #welcome, .mode-player #welcome {
@@ -248,6 +255,6 @@ html, body {
 #p-controls { flex: 0 0 auto; width: min(100%, 340px); height: auto; overflow: visible; }
 
 @media (prefers-reduced-motion: reduce) {
-  #welcome svg, .just-lit #desk { animation: none; }
+  .w-prompt, .just-lit #desk, .light-off #desk #layer-lamp { animation: none; }
   .pl { transition: none; }
 }
