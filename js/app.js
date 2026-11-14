@@ -136,6 +136,7 @@ ${open('layer-shade', 'aria-hidden="true"')}
 </svg>
 ${open('layer-lamp')}
 <g class="chalk boil"><g id="obj-lamp" transform="${lampAt}">${O.lamp()}</g></g>
+${L.browseNav ? `<g class="chalk boil">${O.browseNav(...L.browseNav)}</g>` : ''}
 </svg>`;
 
   for (const g of document.querySelectorAll('.chalk')) g.setAttribute('filter', 'url(#ck1)');
@@ -267,6 +268,10 @@ function renderBox() {
   if (state.browse) {
     const list = inBox();
     const pos = clamp(state.browse.pos, 0, Math.max(0, list.length - 1));
+    const prev = document.querySelector('[data-act="browse-prev"]');
+    const next = document.querySelector('[data-act="browse-next"]');
+    if (prev) prev.classList.toggle('off', pos <= 0);
+    if (next) next.classList.toggle('off', pos >= list.length - 1);
     const base0 = pos === 0 ? 190 : 204 - 8 * (pos - 1) - 34;
     for (let j = list.length - 1; j >= 0; j--) {
       const i = list[j];
@@ -660,6 +665,7 @@ function applyBrowse() {
   } else {
     g.setAttribute('transform', place(item('box')));
   }
+  stage.classList.toggle('browsing', Boolean(state.browse));
   const nb = $('#obj-notebook');
   if (nb) nb.classList.toggle('dim', Boolean(state.browse));
   const text = $('#layer-text');
@@ -738,9 +744,10 @@ function onMove(e) {
     const pt = clientToPlane(e.clientX, e.clientY);
     moveHeld(pt.x, pt.y, item('turntable')[4]);
   }
-  if (ptr.type === 'browse') {
-    const dx = e.clientX - ptr.lastX;
-    if (Math.abs(dx) > 26) { browseStep(dx < 0 ? 1 : -1); ptr.lastX = e.clientX; }
+  if (ptr.type === 'browse' && !ptr.stepped) {
+    // 滑一次只翻一張，不管手指滑了多遠
+    const dx = e.clientX - ptr.x0;
+    if (Math.abs(dx) > 30) { browseStep(dx < 0 ? 1 : -1); ptr.stepped = true; }
   }
 }
 
@@ -852,6 +859,8 @@ function press(act) {
   else if (act === 'prev') step(-1);
   else if (act === 'next') step(1);
   else if (act === 'lamp') lampSwitch();
+  else if (act === 'browse-prev') { if (state.browse) browseStep(-1); }
+  else if (act === 'browse-next') { if (state.browse) browseStep(1); }
   else if (act === 'close') setLight('on');
 }
 

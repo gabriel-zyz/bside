@@ -102,6 +102,11 @@ html, body {
 
 .dim { opacity: .28; }
 
+/* 手機挑歌時的兩個箭頭：平常不顯示；翻到頭的那一邊變淡、點不了 */
+#browse-nav { display: none; }
+.browsing #browse-nav { display: inline; }
+.btn.off { opacity: .22; pointer-events: none; }
+
 @media (prefers-reduced-motion: reduce) {
   .spin { animation: none; }
   .rec .lift, #arm { transition: none; }

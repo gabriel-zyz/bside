@@ -147,6 +147,14 @@ export function controls(xs, y, r = 17) {
     + deckButton('next', xs[2], y, '下一首', ICON.next, r);
 }
 
+/** 手機挑歌時的兩個箭頭：上一張、下一張 */
+export function browseNav(xPrev, xNext, y, r = 24) {
+  return `<g id="browse-nav">`
+    + deckButton('browse-prev', xPrev, y, '上一張', '<path class="l" d="M4,-7 L-4,0 L4,7"></path>', r)
+    + deckButton('browse-next', xNext, y, '下一張', '<path class="l" d="M-4,-7 L4,0 L-4,7"></path>', r)
+    + '</g>';
+}
+
 /**
  * 回傳三層：below（機身、轉盤）、record（唱片要放進去的空位）、above（唱臂）。
  * 三層要用同一個外層 transform，分開是因為唱片在機身上面、唱臂又在唱片上面。
