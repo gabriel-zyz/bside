@@ -392,13 +392,57 @@ function fly(song, from, to) {
  * 在使用者的手勢裡先讓 audio 元素靜音播一下再停住。
  * 這樣稍後（落針的沙沙聲之後）不在手勢裡呼叫 play()，瀏覽器也會放行。
  */
+/* ---------- 提前載好下一首 ---------- */
+
+// 鎖屏時一首播完要接下一首，手機常常不讓背景裡的網頁再去下載：新的一首載不進來，聲音就停了，
+// 要等螢幕打開才繼續。所以趁這一首還在播，先把下一首整個抓下來放在記憶體裡，換歌時不必再碰網路。
+const ahead = { id: null, url: null, lyrics: null, busy: null, retryAt: 0 };
+
+/** 這首歌要從哪裡放：已經提前抓好的就用記憶體裡那一份 */
+function setSrc(song) {
+  const old = audio.src;
+  audio.src = ahead.id === song.id && ahead.url ? ahead.url : song.audio;
+  if (old.startsWith('blob:') && old !== audio.src && old !== ahead.url) URL.revokeObjectURL(old);
+}
+
+async function fetchAhead() {
+  const next = state.current == null ? null : state.songs[state.current + 1];
+  if (!next || ahead.id === next.id || ahead.busy || Date.now() < ahead.retryAt) return;
+  const d = audio.duration;
+  if (!(d > 0) || !isFinite(d) || audio.currentTime < 20) return;   // 真的在聽這一首才抓
+  // 等這一首自己載完再抓，免得和它搶網路；一直沒載完的話，剩下不到 100 秒也開始抓
+  const b = audio.buffered;
+  const loaded = b.length > 0 && b.end(b.length - 1) >= d - 1;
+  if (!loaded && d - audio.currentTime > 100) return;
+  ahead.busy = next.id;
+  try {
+    const res = await fetch(next.audio);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const blob = new Blob([await res.arrayBuffer()], { type: 'audio/mpeg' });
+    let lyrics = null;
+    if (next.lyrics) {
+      try { const r = await fetch(next.lyrics); if (r.ok) lyrics = await r.text(); } catch { /* 歌詞到時候再抓 */ }
+    }
+    if (ahead.url && ahead.url !== audio.src) URL.revokeObjectURL(ahead.url);
+    ahead.id = next.id;
+    ahead.url = URL.createObjectURL(blob);
+    ahead.lyrics = lyrics;
+    dbg('next ready: ' + next.id);
+  } catch (err) {
+    ahead.retryAt = Date.now() + 15000;
+    dbg('next not fetched: ' + err.message);
+  } finally {
+    ahead.busy = null;
+  }
+}
+
 let primeId = 0;
 
-function prime(src) {
+function prime(song) {
   const id = ++primeId;
-  audio.src = src;
+  setSrc(song);
   audio.muted = true;
-  dbg('prime ' + src.split('/').pop());
+  dbg('prime ' + song.id);
   const p = audio.play();
   if (p) {
     p.then(() => {
@@ -421,7 +465,7 @@ function startAudio() {
   if (state.spoiled && song) {
     // 預播被瀏覽器當成「播完」了（iPhone 會這樣，連歌的長度都變成 0）：重新載入，和接下一首時一樣直接放
     state.spoiled = false;
-    audio.src = song.audio;
+    setSrc(song);
     dbg('reload before start');
   }
   audio.muted = false;
@@ -463,16 +507,16 @@ async function putOn(i, { gesture = false, instant = false, animate = true } = {
 
   if (instant) {
     primeId += 1;
-    audio.src = song.audio;
+    setSrc(song);
     audio.muted = false;
     state.startAt = Date.now();
     state.sought = false;
-    dbg('start (instant) ' + song.audio.split('/').pop());
+    dbg('start (instant) ' + song.id + (audio.src.startsWith('blob:') ? ' from memory' : ''));
     audio.play().catch((err) => dbg('play rejected: ' + err.name));
   } else if (gesture) {
-    prime(song.audio);
+    prime(song);
   } else {
-    audio.src = song.audio;
+    setSrc(song);
   }
 
   if (from && !reduced && !document.hidden) await fly(song, from, platterPos());
@@ -480,7 +524,7 @@ async function putOn(i, { gesture = false, instant = false, animate = true } = {
 
   $('#platter-record').innerHTML = O.flatRecord(song);
   state.settled = true;
-  sfx.thump();
+  if (!document.hidden) sfx.thump();
   setArm(O.ARM.start);
   if (instant) return;
 
@@ -618,6 +662,7 @@ function seekFromPointer(e, seek) {
 }
 
 function onTime() {
+  fetchAhead();
   updateProgress();
   if (state.settled && !state.starting) armToTime(isPlaying());
   updateLyrics(audio.currentTime);
@@ -651,9 +696,13 @@ async function loadLyrics(song, token) {
   renderPlayer();
   if (!song.lyrics) return;
   try {
-    const res = await fetch(song.lyrics);
-    if (!res.ok) return;
-    const lines = parseLyrics(await res.text());
+    let text = ahead.id === song.id ? ahead.lyrics : null;   // 提前抓好的
+    if (text == null) {
+      const res = await fetch(song.lyrics);
+      if (!res.ok) return;
+      text = await res.text();
+    }
+    const lines = parseLyrics(text);
     if (token !== state.token) return;
     state.lyrics = lines;
     state.pages = layoutPages(lines, O.textW);
@@ -920,7 +969,7 @@ async function putOnFrom(i, start) {
   loadLyrics(song, token);
   setMediaSession(song);
   updateProgress();
-  prime(song.audio);
+  prime(song);
   if (!reduced) await fly(song, start, platterPos());
   if (token !== state.token) return;
   $('#platter-record').innerHTML = O.flatRecord(song);
@@ -1030,7 +1079,7 @@ function bind() {
 
 async function init() {
   const dev = new URLSearchParams(location.search).has('dev');
-  if (new URLSearchParams(location.search).has('debug')) { dbg = (await import('./debug.js')).start(audio); dbg('build 3'); }
+  if (new URLSearchParams(location.search).has('debug')) { dbg = (await import('./debug.js')).start(audio); dbg('build 4'); }
   const data = await (await fetch('songs.json')).json();
   state.songs = data.songs.filter((s) => dev || !s.dev);
   if (data.shuffle) {

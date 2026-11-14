@@ -19,7 +19,7 @@ export function start(audio) {
     box.textContent = lines.join('\n');
   };
 
-  const file = () => (audio.currentSrc || audio.src || '').split('/').pop().replace('.mp3', '');
+  const file = () => { const src = audio.currentSrc || audio.src || ''; return src.startsWith('blob:') ? '(memory)' : src.split('/').pop().replace('.mp3', ''); };
   for (const type of AUDIO_EVENTS) {
     audio.addEventListener(type, () => {
       const d = isFinite(audio.duration) ? audio.duration.toFixed(0) : String(audio.duration);
@@ -38,6 +38,7 @@ export function start(audio) {
   for (const type of ['pointerdown', 'pointerup', 'pointercancel', 'click']) {
     window.addEventListener(type, (e) => write(`${type} ${name(e.target)}${type === 'click' ? ' detail=' + e.detail : ''}`), true);
   }
+  document.addEventListener('visibilitychange', () => write(document.hidden ? '— screen off / in background —' : '— back on screen —'));
   window.addEventListener('error', (e) => write(`JS error: ${e.message}`));
   window.addEventListener('unhandledrejection', (e) => write(`rejection: ${e.reason && e.reason.message ? e.reason.message : e.reason}`));
 
