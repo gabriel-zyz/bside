@@ -12,8 +12,8 @@
 [00:29.82] 有的只是夢
 [00:34.66] 赤裸裸的夢
 [00:39.30] 沒有人醒來
-[00:43.12] 沒有人逃脫
-[00:47.00] 她在人群中
+[00:43.80] 沒有人逃脫
+[00:49.08] 她在人群中
 [00:52.86] 微醺地擺動
 [00:58.08] 迷離的眼神
 [01:02.76] 望不到昨日的傷痛
@@ -24,8 +24,8 @@
 [01:25.92] Je te montre vraiment mon cœur
 [01:30.00] Parce que ce soir, tu es ma belle
 [01:34.66] As-tu du temps pour un café
-[01:38.56] Dis-moi que tu t'appelles Été
-[01:43.40] 她在人群中
+[01:40.00] Dis-moi que tu t'appelles Été
+[01:45.28] 她在人群中
 [01:49.00] 微醺地擺動
 [01:53.74] 迷離的眼神
 [01:58.74] 望不到昨日的傷痛
@@ -43,9 +43,9 @@
 [02:54.58] 沒有人逃脫
 [02:59.08] Je te montre vraiment mon cœur
 [03:03.90] Parce que ce soir, tu es ma belle
-[03:07.06] As-tu du temps pour un café
-[03:11.78] Dis-moi que tu t'appelles Été
-[03:16.16] Je te montre vraiment mon cœur
-[03:21.06] Parce que ce soir, tu es ma belle
-[03:25.18] As-tu du temps pour un café
+[03:08.61] As-tu du temps pour un café
+[03:13.40] Dis-moi que tu t'appelles Été
+[03:17.88] Je te montre vraiment mon cœur
+[03:22.83] Parce que ce soir, tu es ma belle
+[03:27.18] As-tu du temps pour un café
 [03:31.94] Dis-moi que tu t'appelles Été
