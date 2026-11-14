@@ -13,6 +13,8 @@ const audio = $('#audio');
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+// 網址加 ?debug=1 時，把播放過程記在畫面上（見 debug.js）；平常什麼都不做
+let dbg = () => {};
 
 const state = {
   songs: [],
@@ -31,6 +33,9 @@ const state = {
   light: 'off',      // 'off' 還沒開燈；'on' 桌面；'player' 關了燈，只剩播放器
   nowLine: -2,       // 播放器裡目前標亮的是第幾句
   down: null,        // 這一下是按在什麼上面開始的：{ act, notebook, light, browse }；click 要對得上才算數
+  startAt: 0,        // 這首歌是什麼時候開始出聲的（Date.now()）
+  sought: false,     // 這首歌開始之後，使用者有沒有自己拖過進度
+  retried: false,    // 這首歌已經因為「沒播完就結束」重來過一次
   credits: '',
   site: {},          // 網站的名字和署名
 };
@@ -386,15 +391,38 @@ function fly(song, from, to) {
  * 在使用者的手勢裡先讓 audio 元素靜音播一下再停住。
  * 這樣稍後（落針的沙沙聲之後）不在手勢裡呼叫 play()，瀏覽器也會放行。
  */
+let primeId = 0;
+
 function prime(src) {
+  const id = ++primeId;
   audio.src = src;
   audio.muted = true;
+  dbg('prime ' + src.split('/').pop());
   const p = audio.play();
   if (p) {
     p.then(() => {
-      if (audio.muted) { audio.pause(); audio.currentTime = 0; audio.muted = false; }
-    }).catch(() => { audio.muted = false; });
+      // 已經正式開始出聲，或者已經換了別首：不要再動它
+      if (id !== primeId || !audio.muted) return;
+      audio.pause();
+      if (audio.currentTime > 0.3) audio.currentTime = 0;
+      audio.muted = false;
+    }).catch((err) => { dbg('prime rejected: ' + err.name); if (id === primeId) audio.muted = false; });
   }
+}
+
+/**
+ * 正式從頭出聲。
+ * 只有靜音預播真的往前走了一段才跳回 0 秒：歌還沒載好的時候叫瀏覽器跳轉，
+ * 會打斷正在進行的下載重新來過，有的手機瀏覽器還會把它當成播完了。
+ */
+function startAudio() {
+  primeId += 1;
+  audio.muted = false;
+  if (audio.currentTime > 0.3) { try { audio.currentTime = 0; } catch { /* 還沒載入時不能設 */ } }
+  state.startAt = Date.now();
+  state.sought = false;
+  dbg('start');
+  audio.play().catch((err) => dbg('play rejected: ' + err.name));
 }
 
 /**
@@ -411,6 +439,7 @@ async function putOn(i, { gesture = false, instant = false, animate = true } = {
 
   audio.pause();
   state.current = i;
+  state.retried = false;
   hideHint();
   state.settled = false;
   state.starting = false;
@@ -424,9 +453,13 @@ async function putOn(i, { gesture = false, instant = false, animate = true } = {
   updateProgress();
 
   if (instant) {
+    primeId += 1;
     audio.src = song.audio;
     audio.muted = false;
-    audio.play().catch(() => {});
+    state.startAt = Date.now();
+    state.sought = false;
+    dbg('start (instant) ' + song.audio.split('/').pop());
+    audio.play().catch((err) => dbg('play rejected: ' + err.name));
   } else if (gesture) {
     prime(song.audio);
   } else {
@@ -447,9 +480,7 @@ async function putOn(i, { gesture = false, instant = false, animate = true } = {
   await wait(900);
   if (token !== state.token) return;
   state.starting = false;
-  audio.muted = false;
-  try { audio.currentTime = 0; } catch { /* 還沒載入時不能設 */ }
-  audio.play().catch(() => {});
+  startAudio();
 }
 
 function toggle() {
@@ -459,7 +490,7 @@ function toggle() {
   }
   if (state.starting) return;
   if (audio.paused) {
-    if (audio.ended) audio.currentTime = 0;
+    if (audio.ended) { audio.currentTime = 0; state.startAt = Date.now(); state.sought = false; }
     audio.muted = false;
     armToTime();
     audio.play().catch(() => {});
@@ -480,7 +511,33 @@ function step(d) {
   putOn(j, document.hidden ? { instant: true } : { gesture: true });
 }
 
+/**
+ * 瀏覽器說「播完了」，但這首歌從開始出聲到現在的時間遠遠不夠播完，使用者也沒有自己拖過進度：
+ * 那是沒放成功，不是真的播完。
+ */
+function endedEarly() {
+  const d = audio.duration;
+  if (state.sought || !state.startAt || !(d > 30) || !isFinite(d)) return false;
+  return (Date.now() - state.startAt) / 1000 < d - 15;
+}
+
 function onEnded() {
+  if (endedEarly()) {
+    // 不要當成播完去接下一首（那樣會一路跳過整盒唱片）：把這一首重新載入再放一次，還不行就停在這裡
+    const song = cur();
+    dbg('ended early' + (state.retried ? ': giving up' : ': retry'));
+    if (song && !state.retried) {
+      state.retried = true;
+      primeId += 1;
+      audio.src = song.audio;
+      audio.muted = false;
+      state.startAt = Date.now();
+      audio.play().catch((err) => dbg('play rejected: ' + err.name));
+    } else {
+      updatePlaying();
+    }
+    return;
+  }
   const n = state.songs.length;
   if (state.current != null && state.current < n - 1) {
     putOn(state.current + 1, { instant: true });
@@ -540,6 +597,7 @@ function seekFromPointer(e, seek) {
   const x0 = Number(seek.dataset.x0);
   const x1 = Number(seek.dataset.x1);
   audio.currentTime = clamp((pt.x - x0) / (x1 - x0), 0, 1) * audio.duration;
+  state.sought = true;
   onTime();
 }
 
@@ -833,6 +891,7 @@ async function putOnFrom(i, start) {
   const token = ++state.token;
   audio.pause();
   state.current = i;
+  state.retried = false;
   hideHint();
   state.settled = false;
   state.starting = false;
@@ -855,9 +914,7 @@ async function putOnFrom(i, start) {
   await wait(900);
   if (token !== state.token) return;
   state.starting = false;
-  audio.muted = false;
-  try { audio.currentTime = 0; } catch { /* 還沒載入 */ }
-  audio.play().catch(() => {});
+  startAudio();
 }
 
 function onCancel() {
@@ -912,6 +969,7 @@ function onClick(e) {
     const line = e.target.closest('.pl');
     if (line && state.lyrics[line.dataset.k] && audio.duration > 0) {
       audio.currentTime = state.lyrics[line.dataset.k].t;
+      state.sought = true;
       onTime();
     }
     return;
@@ -933,6 +991,7 @@ function onKey(e) {
   if (e.target.classList && e.target.classList.contains('seek') && (e.key === 'ArrowLeft' || e.key === 'ArrowRight') && audio.duration > 0) {
     e.preventDefault();
     audio.currentTime = clamp(audio.currentTime + (e.key === 'ArrowRight' ? 5 : -5), 0, audio.duration);
+    state.sought = true;
     onTime();
   }
 }
@@ -953,6 +1012,7 @@ function bind() {
 
 async function init() {
   const dev = new URLSearchParams(location.search).has('dev');
+  if (new URLSearchParams(location.search).has('debug')) dbg = (await import('./debug.js')).start(audio);
   const data = await (await fetch('songs.json')).json();
   state.songs = data.songs.filter((s) => dev || !s.dev);
   if (data.shuffle) {
@@ -980,6 +1040,8 @@ async function init() {
   audio.addEventListener('timeupdate', onTime);
   audio.addEventListener('loadedmetadata', onTime);
   audio.addEventListener('ended', onEnded);
+  // 開始出聲一陣子之後的跳轉都算使用者拖的（鎖屏上的進度條也會走到這裡）
+  audio.addEventListener('seeking', () => { if (state.startAt && Date.now() - state.startAt > 2000) state.sought = true; });
 
   if ('mediaSession' in navigator) {
     const set = (name, fn) => { try { navigator.mediaSession.setActionHandler(name, fn); } catch { /* 不支援就算了 */ } };
