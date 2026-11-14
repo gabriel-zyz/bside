@@ -5,42 +5,42 @@
 # 没写时间的行，网页会先把它排在前后两句的正中间。
 # 以 # 开头的行是说明，不会显示。
 
-Get away to nowhere
-Here lay a sober man in the rain
-Grass did sway
-She said there was a way
-What was waiting for her
-She didn’t care
-Anyway
-March on
-Hold on
-Here stood a liar with a gun
-He wrote a song
-Then turned me on
-Said if I one day find a bullet
-Make a sound
-Back home
-Bring your dogs and cats
-Come run with mine
-Make a record of what we sang
-Sell it to myself
-We could see the top of the high mountain so well
-I was already freaking caught in the trap
-Why do I feel so sad
-Night fell
-Light faded
-Here flew an angel, naked out there
-Give me wings
-Forced me to sing
-Invited me to fly with her to the hell
-I walked away
-Back home
-Bring your dogs and cats
-Come run with mine
-Make a record of what we sang
-Sell it to myself
-We could see the top of the high mountain so well
-I was already freaking caught in the trap
-Why do I feel so sad
-I was already freaking caught in the trap
-Why do I feel so sad
+[00:19.98] Get away to nowhere
+[00:23.68] Here lay a sober man in the rain
+[00:28.28] Grass did sway
+[00:30.06] She said there was a way
+[00:32.36] What was waiting for her
+[00:34.80] She didn’t care
+[00:46.52] Anyway
+[00:46.52] March on
+[00:47.94] Hold on
+[00:50.08] Here stood a liar with a gun
+[00:54.16] He wrote a song
+[00:56.74] Then turned me on
+[00:58.48] Said if I one day find a bullet
+[01:02.18] Make a sound
+[01:06.86] Back home
+[01:09.40] Bring your dogs and cats
+[01:11.74] Come run with mine
+[01:14.84] Make a record of what we sang
+[01:20.32] Sell it to myself
+[01:24.18] We could see the top of the high mountain so well
+[01:32.76] I was already freaking caught in the trap
+[01:37.80] Why do I feel so sad
+[01:49.04] Night fell
+[01:50.92] Light faded
+[01:53.04] Here flew an angel, naked out there
+[01:57.14] Give me wings
+[01:59.18] Forced me to sing
+[02:01.58] Invited me to fly with her to the hell
+[02:05.40] I walked away
+[02:09.28] Back home
+[02:12.34] Bring your dogs and cats
+[02:14.50] Come run with mine
+[02:18.90] Make a record of what we sang
+[02:23.32] Sell it to myself
+[02:27.32] We could see the top of the high mountain so well
+[02:35.44] I was already freaking caught in the trap
+[02:40.56] Why do I feel so sad
+[02:43.30] I was already freaking caught in the trap
+[02:49.26] Why do I feel so sad

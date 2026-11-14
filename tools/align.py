@@ -1,7 +1,7 @@
 """把一首歌的歌词自动对到音频上，把时间写回这首歌的歌词文件。
 
 用法（在 web-app 目录下）：
-    .venv/bin/python tools/align.py <歌的 id> [--force] [--model turbo]
+    .venv/bin/python tools/align.py <歌的 id> [--force] [--model small]
 
 读 songs.json 里这首歌的 audio 和 lyrics。歌词文件一行一句，
 对完之后每一行前面会加上 [分:秒]；文件开头的 # 说明原样保留。
@@ -9,9 +9,9 @@
 
 对齐结果只是初稿，要用 tools/timing.html 听一遍校对。
 
-第一次用之前要装好环境（约 1 GB，另外会下载约 1.5 GB 的模型到 ~/.cache/whisper）：
+第一次用之前要装好环境（约 1 GB，另外会下载约 0.5 GB 的模型到 ~/.cache/whisper）：
     python3 -m venv .venv && .venv/bin/pip install stable-ts
-一首 4 分钟的歌在 8 GB 内存的 M1 上大约要跑 15 分钟。
+一首 4 分钟的歌大约跑半分钟。
 """
 
 import json
@@ -95,7 +95,9 @@ def dtw_plain(x):
 def main():
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
     force = "--force" in sys.argv
-    model_name = sys.argv[sys.argv.index("--model") + 1] if "--model" in sys.argv else "turbo"
+    # 默认用 small：在内存只有 8 GB 的电脑上，大一号的模型会被挤到硬盘交换区里，
+    # 一首歌要跑一两个小时；small 只要十几秒，拿校对过的歌来比，多数句子误差在 0.5 秒内。
+    model_name = sys.argv[sys.argv.index("--model") + 1] if "--model" in sys.argv else "small"
     if "--model" in sys.argv:
         args = [a for a in args if a != model_name]
     if not args:

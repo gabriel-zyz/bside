@@ -5,59 +5,59 @@
 # 没写时间的行，网页会先把它排在前后两句的正中间。
 # 以 # 开头的行是说明，不会显示。
 
-始終有一首歌
-一個人
-讓你感動
-讓你溫柔
-有過夢
-有過痛
-得到什麼
-忘記什麼
-這個世界讓人越來越迷惑
-越來越不懂
-曾經那些純真失去了顏色
-在凋零中
-你想得太多
-想擁有太多
-卻不知道
-錯過了太多
-社會的面容
-厭倦了太久
-一直都想做回真的我
-You say you don't wanna take it anymore
-I say let it go
-Just go chasing something you really wanna own
-We never leave you alone
-總是在下午後
-兩點鐘
-忙中想起
-熟悉臉孔
-寫首歌給午後
-唏噓時光
-過得匆匆
-這個世界讓人越來越迷惑
-越來越不懂
-曾經那些純真失去了顏色
-在凋零中
-你想得太多
-想擁有太多
-卻不知道
-錯過了太多
-社會的面容
-厭倦了太久
-一直都想做回真的我
-You say you don't wanna take it anymore
-I say let it go
-Just go chasing something you really wanna own
-We never leave you alone
-你想得太多
-想擁有太多
-卻不知道
-錯過了太多
-社會的面容
-厭倦了太久
-一直都想做回真的我
-You say you don't wanna take it anymore
-I say let it go
-Just go chasing something you really wanna own
-We never leave you alone
+[00:16.20] 始終有一首歌
+[00:18.68] 一個人
+[00:20.94] 讓你感動
+[00:23.00] 讓你溫柔
+[00:25.04] 有過夢
+[00:27.18] 有過痛
+[00:29.14] 得到什麼
+[00:31.14] 忘記什麼
+[00:33.62] 這個世界讓人越來越迷惑
+[00:39.66] 越來越不懂
+[00:41.88] 曾經那些純真失去了顏色
+[00:46.36] 在凋零中
+[00:50.00] 你想得太多
+[00:52.06] 想擁有太多
+[00:54.16] 卻不知道
+[00:55.46] 錯過了太多
+[00:58.14] 社會的面容
+[01:00.30] 厭倦了太久
+[01:02.38] 一直都想做回真的我
+[01:06.44] You say you don't wanna take it anymore
+[01:12.42] I say let it go
+[01:14.70] Just go chasing something you really wanna own
+[01:18.88] We never leave you alone
+[01:27.26] 總是在下午後
+[01:32.40] 兩點鐘
+[01:34.42] 忙中想起
+[01:36.52] 熟悉臉孔
+[01:38.56] 寫首歌給午後
+[01:42.56] 唏噓時光
+[01:44.46] 過得匆匆
+[01:46.92] 這個世界讓人越來越迷惑
+[01:52.66] 越來越不懂
+[01:55.28] 曾經那些純真失去了顏色
+[01:59.94] 在凋零中
+[02:03.50] 你想得太多
+[02:05.38] 想擁有太多
+[02:07.50] 卻不知道
+[02:08.82] 錯過了太多
+[02:11.54] 社會的面容
+[02:13.68] 厭倦了太久
+[02:15.66] 一直都想做回真的我
+[02:19.68] You say you don't wanna take it anymore
+[02:24.62] I say let it go
+[02:27.82] Just go chasing something you really wanna own
+[02:32.68] We never leave you alone
+[02:52.40] 你想得太多
+[02:54.30] 想擁有太多
+[02:56.36] 卻不知道
+[02:57.68] 錯過了太多
+[03:00.36] 社會的面容
+[03:02.54] 厭倦了太久
+[03:04.58] 一直都想做回真的我
+[03:08.60] You say you don't wanna take it anymore
+[03:14.16] I say let it go
+[03:16.80] Just go chasing something you really wanna own
+[03:22.64] We never leave you alone
