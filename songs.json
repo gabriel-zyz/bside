@@ -1,7 +1,7 @@
 {
   "note": "歌單。shuffle 為 true 時，每次打開網頁，盒子裡的順序（也是上一首/下一首的順序）都重新隨機排；改成 false 就照下面寫的順序。date 會顯示在時鐘上。lyrics 是這首歌的歌詞檔，字和時間都在那一個檔案裡。dev 為 true 的是測試用的音，只有網址帶 ?dev=1 時才出現。site 是網站的名字和署名，會顯示在瀏覽器分頁和手機鎖屏上。credits 是寫在筆記本上歌名下面的那一行，每首歌都用它；某一首想寫不一樣的，就在那首歌裡另外加一個 credits。",
   "site": {
-    "title": "未完工的夏天2010-2013",
+    "title": "B SIDE 2010-2013",
     "artist": "Gabriel"
   },
   "credits": "詞曲：Gabriel　重製：Mureka",
